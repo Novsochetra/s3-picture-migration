@@ -36,25 +36,28 @@ function printPage(page, prefix, totals) {
 
 export async function lsCommand(context) {
   const { args, connection, log, connect } = context;
+
   const target = await pickTarget(context);
   const knownRegion = args.region ?? target.region;
   const { bucket } = await connect(target.name, { connection, knownRegion, log });
-  const prefix = normalizePrefix(args.prefix);
-  const totals = { files: 0, bytes: 0, folders: 0 };
 
   // Piped into `head`, the pipe closes early: stop quietly.
   process.stdout.on('error', (error) => error.code === 'EPIPE' && process.exit(0));
-  console.log(`s3://${bucket.name}/${prefix}${args.recursive ? '   (recursive)' : ''}\n`);
 
-  for await (const page of bucket.pages({ prefix, delimiter: args.recursive ? null : '/' })) {
+  const prefix = normalizePrefix(args.prefix);
+  const delimiter = args.recursive ? null : '/';
+  const totals = { files: 0, bytes: 0, folders: 0 };
+
+  console.log(`s3://${bucket.name}/${prefix}${args.recursive ? '   (recursive)' : ''}\n`);
+  for await (const page of bucket.pages({ prefix, delimiter })) {
     printPage(page, prefix, totals);
   }
 
-  const folders = args.recursive
+  const folderNote = args.recursive
     ? ''
     : ` · ${formatNumber(totals.folders)} folder(s) — add --recursive to include everything inside them`;
 
-  console.log(`\n${formatNumber(totals.files)} file(s), ${formatBytes(totals.bytes)}${folders}`);
+  console.log(`\n${formatNumber(totals.files)} file(s), ${formatBytes(totals.bytes)}${folderNote}`);
 
   return 0;
 }

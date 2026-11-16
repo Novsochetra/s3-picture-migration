@@ -30,7 +30,6 @@ async function confirmEmpty(args) {
 
   const prompt = createPrompter();
   const answer = await prompt.ask('Type "yes" to delete them: ');
-
   prompt.close();
 
   return answer.toLowerCase() === 'yes';
@@ -44,7 +43,6 @@ async function deleteBatch({ bucket, existing, stats }, batch) {
 
   const errors = await bucket.removeMany(batch);
   const failedKeys = new Set(errors.map((error) => error.Key));
-
   errors.forEach((error) => {
     stats.failed++;
     console.error(`FAIL  delete ${error.Key}: ${error.Code} ${error.Message ?? ''}`);

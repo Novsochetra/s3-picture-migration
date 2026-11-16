@@ -7,12 +7,13 @@ export function createPrompter() {
     output: process.stdout,
     terminal: interactive,
   });
-  const answers = lines[Symbol.asyncIterator]();
 
   lines.on('SIGINT', () => {
     console.log();
     process.exit(130);
   });
+
+  const answers = lines[Symbol.asyncIterator]();
 
   return {
     async ask(question) {

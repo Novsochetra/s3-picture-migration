@@ -36,15 +36,15 @@ async function connectChecked({ args, connection, log, connect }, target, savedR
 
 export async function openSession(context, target) {
   const { args, log } = context;
+
   const jobFiles = openJobFiles(context, target);
   const { job } = jobFiles;
   const freshNote = args.fresh && jobFiles.wasSaved ? startOverNote(jobFiles.startOver()) : null;
-  const resuming = Boolean(job.scan);
 
+  const resuming = Boolean(job.scan);
   job.settings = resolveSettings({ saved: job.settings, passed: cliSettings(args), resuming, log });
 
   const { bucket, region } = await connectChecked(context, target, job.region);
-
   job.region = region;
 
   const session = {
@@ -58,7 +58,6 @@ export async function openSession(context, target) {
     extensions: sourceExtensions(job.settings),
     resumeCommand: resumeCommand({ ...target, connection: context.connection }),
   };
-
   await logRunHeader(session, freshNote);
 
   return session;

@@ -11,11 +11,11 @@ async function versioningOf(bucket) {
 // Versioning is the real safety net: with it, any overwrite or delete can be undone in S3.
 async function logVersioning({ bucket, args, log }) {
   const versioning = await versioningOf(bucket);
+
   const tip =
     versioning !== 'Enabled' && !args.rollback
       ? ' (tip: with bucket versioning on, every change can also be undone in S3)'
       : '';
-
   log.info(`Versioning: ${versioning}${tip}`);
 }
 

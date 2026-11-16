@@ -46,11 +46,11 @@ const showProgress = (scan) =>
   );
 
 export async function scanToManifest({ bucket, prefix, manifestPath, filter }) {
-  const temporary = `${manifestPath}.tmp`;
-  const fd = fs.openSync(temporary, 'w');
   const scan = { count: 0, bytes: 0, seen: 0, byExt: {}, ignored: {} };
   const showsProgress = process.stdout.isTTY;
 
+  const temporary = `${manifestPath}.tmp`;
+  const fd = fs.openSync(temporary, 'w');
   try {
     for await (const page of bucket.pages({ prefix })) {
       fs.writeSync(fd, scanPage(page, scan, filter));

@@ -34,6 +34,7 @@ async function finishDelete(context, { key, mainKey, existing }) {
 
 async function finishConverted(context, target) {
   const { key, mainKey, existing } = target;
+
   const sameKey = mainKey === key;
   const added = await addMissingSizes(context, {
     mainKey,
@@ -77,6 +78,7 @@ async function convertFresh(context, { key, mainKey }) {
     limit,
     params,
   });
+
   const cacheControl = response.CacheControl;
   const vout = await makeAllSizes(context, { buffer, sourceKey: key, mainKey, cacheControl });
   const sizes = context.settings.sizes ?? [];

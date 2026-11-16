@@ -72,12 +72,10 @@ export async function prepareWork(session) {
     await ensureScan(session);
 
     const progress = new ProgressStore(jobFiles.paths.progress);
-
     await progress.load();
 
     const manifestPath = jobFiles.paths.manifest;
     const counts = await tallyJob({ manifestPath, progress, retryFailed: limits.retryFailed });
-
     log.info(describeJobStatus(counts, limits.retryFailed));
     jobFiles.saveStatus(counts);
 

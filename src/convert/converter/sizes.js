@@ -35,6 +35,7 @@ async function missingSizes({ bucket, settings }, mainKey) {
 
 export async function addMissingSizes(context, request) {
   const { mainKey, preferredSource, fallbackSource, cacheControl, reason } = request;
+
   const widths = await missingSizes(context, mainKey);
 
   if (!widths.length) {
@@ -44,6 +45,7 @@ export async function addMissingSizes(context, request) {
   const hasPreferred = preferredSource && (await context.bucket.head(preferredSource));
   const sourceKey = hasPreferred ? preferredSource : fallbackSource;
   const { buffer } = await fetchBuffer(context, sourceKey);
+
   const vout = await makeSizes(context, { buffer, sourceKey, mainKey, widths, cacheControl });
 
   return { st: 'done', onlySizes: true, reason, to: mainKey, sizes: widths, vout };

@@ -48,7 +48,6 @@ async function deleteBatch({ bucket, log }, batch, { label, counter }, tally) {
   try {
     const errors = await bucket.removeMany(batch);
     const failedKeys = new Set(errors.map((error) => error.Key));
-
     errors.forEach((error) => {
       tally.failed++;
       log.error(`FAIL      delete ${error.Key}: ${error.Code} ${error.Message ?? ''}`);

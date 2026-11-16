@@ -22,6 +22,7 @@ async function singleFile(context, sourceKey) {
 
 async function wholeFolder(context, sourcePath) {
   const { bucket, folder } = context;
+
   const sourceFolder = toFolder(sourcePath);
 
   if (folder.startsWith(sourceFolder) || sourceFolder.startsWith(folder)) {

@@ -4,8 +4,8 @@ import { isNotFound } from '../../s3/errors.js';
 // never a half-finished download.
 export async function fetchBuffer({ bucket, state }, key) {
   const download = await bucket.open(key);
-  const handle = { abort: async () => download.abort() };
 
+  const handle = { abort: async () => download.abort() };
   state.active.add(handle);
 
   try {

@@ -14,8 +14,8 @@ export function parseSizes(text) {
     .map((width) => width.trim().replace(/w$/i, ''))
     .filter(Boolean)
     .map(Number);
-  const isValid = (width) => Number.isInteger(width) && width >= 1 && width <= WEBP_MAX_DIMENSION;
 
+  const isValid = (width) => Number.isInteger(width) && width >= 1 && width <= WEBP_MAX_DIMENSION;
   if (!widths.length || !widths.every(isValid)) {
     throw new Error(
       `--sizes must be widths between 1 and ${WEBP_MAX_DIMENSION}, e.g. --sizes 320,640,1080`,
@@ -34,7 +34,6 @@ function imageSettings(args) {
 
   if (args['max-width'] !== undefined) {
     const range = { name: 'max-width', min: 1, max: WEBP_MAX_DIMENSION };
-
     settings.maxWidth = parseIntegerOption(args['max-width'], range);
   }
 

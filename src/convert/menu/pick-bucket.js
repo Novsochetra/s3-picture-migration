@@ -4,7 +4,6 @@ export async function pickBucket(prompt, buckets) {
   }
 
   const nameWidth = Math.max(...buckets.map((bucket) => bucket.Name.length));
-
   console.log('\nBuckets:');
   buckets.forEach((bucket, i) => {
     console.log(

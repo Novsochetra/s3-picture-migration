@@ -21,13 +21,14 @@ async function listObjects(bucket, prefix) {
 async function classifyBackup(bucket, { backupKey, suffix, objects }) {
   const mainKey = mainKeyForBackup(backupKey, suffix);
   const current = await bucket.head(mainKey);
-  const backup = objects.get(backupKey);
 
   if (!current) {
     const why = `no longer exists (deleted after conversion?); backup ${backupKey} kept`;
 
     return { leave: { key: mainKey, why } };
   }
+
+  const backup = objects.get(backupKey);
 
   if (decodeURIComponent(current.Metadata?.['original-backup'] ?? '') === backupKey) {
     const { size, etag: backupEtag } = backup;
@@ -84,14 +85,15 @@ const isMadeCopy = (key, suffix) =>
 // Only files carrying the marker the converter writes into their metadata are touched.
 export async function planRollback({ bucket, prefix, suffix }) {
   const objects = await listObjects(bucket, prefix);
-  const plan = { restore: [], unusedBackups: [], copies: [], leave: [] };
   const keys = [...objects.keys()];
-  const backups = keys.filter((key) => isBackupKey(key, suffix));
-  const copies = keys.filter((key) => isMadeCopy(key, suffix));
+  const plan = { restore: [], unusedBackups: [], copies: [], leave: [] };
 
+  const backups = keys.filter((key) => isBackupKey(key, suffix));
   await runPool(backups, LOOKUPS_IN_FLIGHT, async (backupKey) => {
     addToPlan(plan, await classifyBackup(bucket, { backupKey, suffix, objects }));
   });
+
+  const copies = keys.filter((key) => isMadeCopy(key, suffix));
   await runPool(copies, LOOKUPS_IN_FLIGHT, async (key) => {
     addToPlan(plan, await classifyCopy(bucket, { key, objects }));
   });

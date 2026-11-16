@@ -51,13 +51,13 @@ function startEncodedUpload({ bucket, settings }, encoder, request) {
 export async function encodeUpload(context, request) {
   const encoder = webpEncoder(request.buffer, { ...request, settings: context.settings });
   const { upload, counter, failure } = startEncodedUpload(context, encoder, request);
+
   const handle = {
     abort: async () => {
       encoder.destroy();
       await upload.abort().catch(() => {});
     },
   };
-
   context.state.active.add(handle);
 
   try {

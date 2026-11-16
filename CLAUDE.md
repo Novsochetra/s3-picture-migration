@@ -52,8 +52,8 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 - Keep comments minimal: no comments that restate the code, no section-banner comments, no long
   JSDoc on obvious functions.
 - Prettier owns formatting (`.prettierrc.json`), but it never adds a blank line, so space code into
-  steps yourself. Put a blank line:
-  - after the setup (the `const`s that gather what a function needs), before its logic,
+  steps yourself (see "Function layout"). Put a blank line:
+  - between the blocks of a function,
   - after a block (`if`, `for`, `try`, `switch`) that closes with `}` when more code follows,
   - after an early return (`if (!current) { ...; return ...; }`),
   - before the final `return`, unless it is the only line of the function,
@@ -78,6 +78,43 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 - A function with more than a few inputs takes one object (`{ bucket, prefix, manifestPath }`).
   Tools return an exit code instead of calling `process.exit`; only `bin/` and interactive prompts
   exit.
+
+## Function layout
+
+- Group function bodies into blocks separated by one blank line; each block does one thing.
+- Declare variables in the block where they are first used, not at the top of the function.
+- Process-wide setup (signal/stream handlers, exit handling) belongs in the CLI entry file, not in
+  command functions.
+- No comments that describe what code does; only comments explaining a non-obvious _why_.
+
+Reordering and grouping alone, with nothing else changed, makes a function read as its steps:
+
+```js
+export async function lsCommand(context) {
+  const { args, connection, log, connect } = context;
+
+  const target = await pickTarget(context);
+  const knownRegion = args.region ?? target.region;
+  const { bucket } = await connect(target.name, { connection, knownRegion, log });
+
+  const prefix = normalizePrefix(args.prefix);
+  const delimiter = args.recursive ? null : '/';
+  const totals = { files: 0, bytes: 0, folders: 0 };
+
+  console.log(`s3://${bucket.name}/${prefix}${args.recursive ? '   (recursive)' : ''}\n`);
+  for await (const page of bucket.pages({ prefix, delimiter })) {
+    printPage(page, prefix, totals);
+  }
+
+  const folderNote = args.recursive
+    ? ''
+    : ` · ${formatNumber(totals.folders)} folder(s) — add --recursive to include everything inside them`;
+
+  console.log(`\n${formatNumber(totals.files)} file(s), ${formatBytes(totals.bytes)}${folderNote}`);
+
+  return 0;
+}
+```
 
 ## Testing
 

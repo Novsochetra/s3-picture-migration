@@ -34,7 +34,6 @@ function giveUp(context, error, attempt) {
 export function createConverter(context) {
   const convertOnce = (item) =>
     context.settings.backupSuffix ? replaceWithBackup(context, item) : convertPlain(context, item);
-  const wait = context.wait ?? sleep;
 
   return async function convert(item) {
     for (let attempt = 1; ; attempt++) {
@@ -49,10 +48,11 @@ export function createConverter(context) {
 
         const delay = retryDelay(attempt);
         const next = `attempt ${attempt + 1}/${context.retries + 1}`;
-
         context.log.warn(
           `retry  ${item.key} in ${(delay / 1000).toFixed(1)}s (${next}): ${failureMessage(error)}`,
         );
+
+        const wait = context.wait ?? sleep;
         await wait(delay);
       }
     }

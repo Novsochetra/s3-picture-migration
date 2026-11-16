@@ -1,13 +1,12 @@
 export async function runPool(items, limit, task) {
   let next = 0;
-  const workerCount = Math.min(limit, items.length);
-
   const worker = async () => {
     while (next < items.length) {
       await task(items[next++]);
     }
   };
 
+  const workerCount = Math.min(limit, items.length);
   await Promise.all(Array.from({ length: workerCount }, worker));
 }
 

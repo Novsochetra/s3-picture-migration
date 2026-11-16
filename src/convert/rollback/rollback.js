@@ -63,14 +63,12 @@ function reportRollback({ log }, tally, history) {
 
 export async function rollback(session) {
   const { args, log, bucket, prefix, settings, jobFiles } = session;
-  const suffix = settings.backupSuffix ?? args['backup-suffix'] ?? '-original';
 
   log.info(
     `\nRollback of s3://${bucket.name}/${prefix}: looking for files this script created ...`,
   );
-
+  const suffix = settings.backupSuffix ?? args['backup-suffix'] ?? '-original';
   const plan = await planRollback({ bucket, prefix, suffix });
-
   showPlan(session, plan);
 
   if (!(await confirmRollback(session, plan))) {
@@ -78,9 +76,9 @@ export async function rollback(session) {
   }
 
   const tally = await applyRollback(session, plan);
-  const history = jobFiles.startOver();
 
   // The job's progress is forgotten, so the next run starts clean.
+  const history = jobFiles.startOver();
   jobFiles.save();
   reportRollback(session, tally, history);
 

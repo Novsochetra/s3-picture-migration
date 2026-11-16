@@ -40,7 +40,6 @@ function trackFailures({ log, limits, resumeCommand }, { state }, result) {
 
 export function recordResult(session, run, { item, result, ms }) {
   const previous = run.progress.status(item.key);
-
   run.progress.record(item.key, result, ms);
   updateCounts(run, { previous, result, size: item.size });
   countResult(run.stats, result);
@@ -48,7 +47,7 @@ export function recordResult(session, run, { item, result, ms }) {
   const progressText = `[${percent(run.counts.completed, run.counts.total).padStart(5)}%]`;
   const outcome = { key: item.key, result, ms, deleteOriginal: session.settings.deleteOriginal };
   const [level, text] = resultLine(progressText, outcome);
-
   session.log[level](text);
+
   trackFailures(session, run, result);
 }

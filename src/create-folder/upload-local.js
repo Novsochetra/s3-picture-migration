@@ -10,6 +10,7 @@ const UPLOADS_IN_FLIGHT = 4;
 
 async function uploadOne(context, { abs, rel }) {
   const { bucket, folder, existing, stats } = context;
+
   const key = folder + rel;
   const size = fs.statSync(abs).size;
 
@@ -22,7 +23,6 @@ async function uploadOne(context, { abs, rel }) {
 
   try {
     const body = fs.createReadStream(abs);
-
     await bucket.upload({ key, body, params: { ContentType: contentTypeOf(rel) } }).done();
     existing.set(key, size);
     stats.uploaded++;

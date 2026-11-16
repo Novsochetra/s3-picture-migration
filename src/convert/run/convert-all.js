@@ -73,9 +73,8 @@ function converterFor({ bucket, settings, log, limits, connection }, run) {
 
 export async function convertAll(session, preparedWork) {
   const { log, limits, jobFiles } = session;
-  const run = newRun(preparedWork);
-  const workers = { source: pendingItems(session, run), convert: converterFor(session, run) };
 
+  const run = newRun(preparedWork);
   // Every image is decoded once; sharp's cache would only hold memory.
   sharp.cache(false);
   run.progress.open();
@@ -86,10 +85,11 @@ export async function convertAll(session, preparedWork) {
     jobFiles.saveStatus(run.counts);
   }, STATUS_EVERY_MS);
 
+  const workers = { source: pendingItems(session, run), convert: converterFor(session, run) };
   log.info(`\nConverting with concurrency ${limits.concurrency} (Ctrl+C to stop safely)\n`);
   await Promise.all(Array.from({ length: limits.concurrency }, () => work(session, run, workers)));
-  clearInterval(ticker);
 
+  clearInterval(ticker);
   if (!run.state.hardStop) {
     signals.remove();
     run.progress.close();

@@ -4,7 +4,6 @@ function warnChangedSettings({ saved, passed, log }) {
   for (const [name, value] of Object.entries(passed)) {
     const before = JSON.stringify(saved[name]);
     const after = JSON.stringify(value);
-
     if (name in saved && before !== after) {
       log.warn(
         `Setting "${name}" changed from ${before} to ${after} — ` +

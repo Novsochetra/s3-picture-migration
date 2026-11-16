@@ -11,14 +11,12 @@ export async function listBucketsCommand({ connection }) {
   }
 
   const nameWidth = Math.max(...buckets.map((bucket) => bucket.Name.length));
-
   for (const bucket of buckets) {
     const region =
       bucket.BucketRegion ??
       (await detectBucketRegion(bucket.Name, connection).catch(() => null)) ??
       '?';
     const created = bucket.CreationDate?.toISOString().slice(0, 10) ?? '?';
-
     console.log(`${bucket.Name.padEnd(nameWidth)}  ${region.padEnd(15)}  created ${created}`);
   }
 

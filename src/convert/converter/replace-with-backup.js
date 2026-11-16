@@ -83,8 +83,10 @@ export async function replaceWithBackup(context, { key }) {
   }
 
   const createdBackup = await ensureBackup(context, { key, current, backupKey });
+
   const target = { key, current, backupKey, createdBackup };
   const { buffer, main } = await encodeOverOriginal(context, target);
+
   const cacheControl = current.CacheControl;
   const vout = await makeAllSizes(context, {
     buffer,

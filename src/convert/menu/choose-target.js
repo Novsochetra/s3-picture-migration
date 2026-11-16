@@ -17,6 +17,7 @@ async function chooseInMenu({ args, connection, log, connect }, prompt) {
   const picked = await pickBucket(prompt, await listBuckets(connection));
   const knownRegion = args.region ?? picked.region;
   const { bucket, region } = await connect(picked.name, { connection, knownRegion, log });
+
   const prefix = await browseFolders(bucket, prompt);
 
   return { bucketName: picked.name, prefix, region };

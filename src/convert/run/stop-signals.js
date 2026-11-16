@@ -7,7 +7,6 @@ function abortNow({ log, jobFiles, resumeCommand }, run) {
   setTimeout(() => process.exit(130), FORCED_EXIT_AFTER_MS).unref();
 
   const aborts = [...run.state.active].map((handle) => handle.abort());
-
   Promise.allSettled(aborts).finally(() => {
     jobFiles.saveStatus(run.counts, true);
     log.warn(`Aborted. Progress is saved — resume with:\n  ${resumeCommand}`);

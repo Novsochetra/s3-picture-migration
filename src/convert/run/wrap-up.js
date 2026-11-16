@@ -12,6 +12,7 @@ function writeProblems(failedPath, problems) {
 
 function exitCodeOf({ log, jobFiles, resumeCommand }, run, problems) {
   const { counts, state } = run;
+
   const left = counts.total - counts.completed;
 
   if (left === 0 && counts.invalid === 0) {
@@ -33,10 +34,11 @@ function exitCodeOf({ log, jobFiles, resumeCommand }, run, problems) {
 
 export function wrapUp(session, run) {
   const { log, jobFiles } = session;
-  const problems = run.progress.problems();
 
+  const problems = run.progress.problems();
   writeProblems(jobFiles.paths.failed, problems);
   jobFiles.saveStatus(run.counts, true);
+
   log.info(statusLine(run));
   log.info(runSummary(run.stats));
 
