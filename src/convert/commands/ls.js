@@ -1,4 +1,5 @@
 import { createPrompter } from '../../cli/prompter.js';
+import { stopQuietlyWhenPipeCloses } from '../../cli/quiet-pipe.js';
 import { listBuckets } from '../../s3/buckets.js';
 import { normalizePrefix } from '../../s3/keys.js';
 import { pickBucket } from '../menu/pick-bucket.js';
@@ -40,6 +41,7 @@ export async function lsCommand(context) {
   const recursive = context.args.recursive;
   const totals = emptyTotals();
 
+  stopQuietlyWhenPipeCloses();
   console.log(listingHeader(bucket.name, prefix, recursive));
 
   for await (const page of bucket.pages({ prefix, delimiter: recursive ? undefined : '/' })) {

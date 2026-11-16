@@ -71,7 +71,6 @@ function converterFor({ bucket, settings, log, limits, connection }, run) {
   });
 }
 
-// Saves the status every 30 s and handles Ctrl+C; returns what stops both.
 function watchRun(session, run) {
   const { log, jobFiles } = session;
   const signals = installStopSignals(session, run);

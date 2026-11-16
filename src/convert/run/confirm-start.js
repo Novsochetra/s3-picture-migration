@@ -1,6 +1,6 @@
 import { saysYes } from '../../cli/prompter.js';
 import { formatNumber } from '../../utils/format.js';
-import { closePrompt } from './session-prompt.js';
+import { closePrompt } from '../session-prompt.js';
 
 function closeWith(session, message) {
   session.log.info(message);

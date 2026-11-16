@@ -20,7 +20,14 @@ async function copyOne(context, { key, size, rel }) {
     return;
   }
 
-  await transferFile(context, { kind: 'copied', from: key, to: destination, size, send });
+  await transferFile(context, {
+    counter: 'copied',
+    verb: 'copied',
+    from: key,
+    to: destination,
+    size,
+    send,
+  });
 }
 
 export async function copyFromBucket(context) {

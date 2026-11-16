@@ -1,5 +1,6 @@
 import { backupKeyFor } from '../naming.js';
-import { converted, encodeImage, keptOriginal, SOURCE_GONE } from './encode-image.js';
+import { converted, keptOriginal, SOURCE_GONE } from './results.js';
+import { uploadWebpAndSizes } from './upload-webp.js';
 import { fetchBuffer } from './fetch-buffer.js';
 import { addMissingSizes } from './sizes.js';
 
@@ -36,20 +37,26 @@ function originalParams({ conditionalWrites }, current, backupKey) {
 // The backup is the only copy of the original once the WebP is written over it, so it is
 // dropped only while the original still sits untouched at its key.
 async function dropBackupIfOriginalUntouched({ bucket }, { key, current, backupKey }) {
-  const now = await bucket.head(key);
+  // A failed look must not hide the real error; without an answer the backup stays.
+  const now = await bucket.head(key).catch(() => null);
 
   if (now?.ETag === current.ETag) {
     await bucket.remove(backupKey).catch(() => {});
   }
 }
 
-async function encodeOverOriginal(context, target) {
+async function uploadOverOriginal(context, target) {
   const { key, current, backupKey, createdBackup } = target;
   const { buffer } = await fetchBuffer(context, backupKey);
   const params = originalParams(context, current, backupKey);
 
   try {
-    return await encodeImage(context, { buffer, sourceKey: backupKey, mainKey: key, params });
+    return await uploadWebpAndSizes(context, {
+      buffer,
+      sourceKey: backupKey,
+      mainKey: key,
+      params,
+    });
   } catch (error) {
     // After a network error the backup is kept for the retry.
     if (error.permanent && createdBackup) {
@@ -72,6 +79,20 @@ async function addSizesToConverted(context, { key, current, backupKey }) {
   return added ?? { status: 'skipped', reason: 'already webp' };
 }
 
+// A WebP that would be larger was never written, so the original is untouched and its new
+// backup not needed.
+async function resultOf(context, { key, backupKey, createdBackup, uploaded }) {
+  if (!uploaded.larger) {
+    return converted(uploaded, { to: key, backup: backupKey });
+  }
+
+  if (createdBackup) {
+    await context.bucket.remove(backupKey);
+  }
+
+  return keptOriginal(uploaded);
+}
+
 // Every step is safe to repeat, so a crash anywhere resumes on the next run.
 export async function replaceWithBackup(context, { key }) {
   const backupKey = backupKeyFor(key, context.settings.backupSuffix);
@@ -86,13 +107,8 @@ export async function replaceWithBackup(context, { key }) {
   }
 
   const createdBackup = await ensureBackup(context, { key, current, backupKey });
-  const encoded = await encodeOverOriginal(context, { key, current, backupKey, createdBackup });
+  const target = { key, current, backupKey, createdBackup };
+  const uploaded = await uploadOverOriginal(context, target);
 
-  if (encoded.larger && createdBackup) {
-    await context.bucket.remove(backupKey);
-  }
-
-  return encoded.larger
-    ? keptOriginal(encoded)
-    : converted(encoded, { to: key, backup: backupKey });
+  return resultOf(context, { ...target, uploaded });
 }

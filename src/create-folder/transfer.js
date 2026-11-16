@@ -16,8 +16,7 @@ export function skipIfAlreadyThere({ args, existing, stats }, key, rel, size) {
   return true;
 }
 
-// kind is 'uploaded' or 'copied': the stat it counts in and the word it logs.
-export async function transferFile(context, { kind, from, to, size, send }) {
+export async function transferFile(context, { counter, verb, from, to, size, send }) {
   try {
     await send();
   } catch (error) {
@@ -27,7 +26,7 @@ export async function transferFile(context, { kind, from, to, size, send }) {
   }
 
   context.existing.set(to, size);
-  context.stats[kind]++;
+  context.stats[counter]++;
   context.stats.bytes += size;
-  console.log(`${kind.padEnd(10)}${from} -> ${to} (${formatBytes(size)})`);
+  console.log(`${verb.padEnd(10)}${from} -> ${to} (${formatBytes(size)})`);
 }

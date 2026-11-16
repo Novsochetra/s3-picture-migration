@@ -17,6 +17,9 @@ function describeJob(job) {
   );
 }
 
+// askUntilValid asks again on undefined; null is a valid answer: no job, start a new one.
+const NEW_JOB = null;
+
 function showJobs(jobs) {
   console.log('\nUnfinished jobs on this machine:');
   jobs.forEach((job, i) => {
@@ -26,10 +29,9 @@ function showJobs(jobs) {
   });
 }
 
-// Enter picks no job (null): the user starts a new one.
 export async function pickUnfinishedJob(prompt, jobs) {
   if (!jobs.length) {
-    return null;
+    return NEW_JOB;
   }
 
   showJobs(jobs);
@@ -37,6 +39,6 @@ export async function pickUnfinishedJob(prompt, jobs) {
   const question = '\nResume a job [number], or press Enter for a new one: ';
 
   return askUntilValid(prompt, question, (answer) =>
-    answer === '' ? null : jobs[Number(answer) - 1],
+    answer === '' ? NEW_JOB : jobs[Number(answer) - 1],
   );
 }

@@ -6,7 +6,7 @@ import { scanToManifest } from '../job/scan-manifest.js';
 import { tallyJob } from '../job/tally.js';
 import { isBackupKey, isVariantKey } from '../naming.js';
 import { startOverNote } from './open-session.js';
-import { askInSession, canAsk, closePrompt } from './session-prompt.js';
+import { askInSession, canAsk, closePrompt } from '../session-prompt.js';
 import { describeJobStatus, describeScan } from './status-line.js';
 
 const RESTART_QUESTION =

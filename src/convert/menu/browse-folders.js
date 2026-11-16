@@ -32,8 +32,6 @@ const parentOf = (prefix) => {
 
 // Returns undefined for an answer that means nothing here.
 export function nextStep(answer, { prefix, folders }) {
-  const picked = Number.isInteger(Number(answer)) ? folders[Number(answer) - 1] : undefined;
-
   if (answer === '' || answer === '.') {
     return { use: prefix };
   }
@@ -45,6 +43,8 @@ export function nextStep(answer, { prefix, folders }) {
   if (answer === '..') {
     return { open: parentOf(prefix) };
   }
+
+  const picked = Number.isInteger(Number(answer)) ? folders[Number(answer) - 1] : undefined;
 
   if (picked) {
     return { open: picked };
@@ -64,11 +64,15 @@ async function askInFolder(bucket, prompt, prefix) {
 
 // The chosen folder, or null when the user quits.
 export async function browseFolders(bucket, prompt) {
-  let step = { open: '' };
+  let prefix = '';
 
-  while (step.open !== undefined) {
-    step = await askInFolder(bucket, prompt, step.open);
+  for (;;) {
+    const step = await askInFolder(bucket, prompt, prefix);
+
+    if (step.open === undefined) {
+      return step.quit ? null : step.use;
+    }
+
+    prefix = step.open;
   }
-
-  return step.quit ? null : step.use;
 }

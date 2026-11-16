@@ -51,25 +51,21 @@ function startEncodedUpload({ bucket, settings }, encoder, request) {
   return { upload, counter, failure };
 }
 
-function causeOf(error, origin) {
-  const cause = origin?.error ?? error;
-
-  // The source is complete in memory, so a sharp error means the file itself is bad.
-  cause.permanent = origin?.stage === 'encode' || cause.permanent;
-
-  return cause;
-}
-
 async function finishUpload({ upload, counter, failure }) {
   try {
     await upload.done();
 
     return { bytesOut: counter.total() };
   } catch (error) {
-    const cause = causeOf(error, failure.origin);
+    const cause = failure.origin?.error ?? error;
 
     if (cause instanceof LargerThanOriginalError) {
       return { larger: true };
+    }
+
+    // The source is complete in memory, so a sharp error means the file itself is bad.
+    if (failure.origin?.stage === 'encode') {
+      cause.permanent = true;
     }
 
     throw cause;

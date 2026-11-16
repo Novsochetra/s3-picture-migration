@@ -1,5 +1,6 @@
 import { mainKeyFor } from '../naming.js';
-import { converted, encodeImage, keptOriginal, SOURCE_GONE } from './encode-image.js';
+import { converted, keptOriginal, SOURCE_GONE } from './results.js';
+import { uploadWebpAndSizes } from './upload-webp.js';
 import { fetchIfExists } from './fetch-buffer.js';
 import { addMissingSizes } from './sizes.js';
 
@@ -66,22 +67,22 @@ async function convertFresh(context, { key, mainKey }) {
   }
 
   const params = copiedParams(fetched.response, key);
-  const encoded = await encodeImage(context, {
+  const uploaded = await uploadWebpAndSizes(context, {
     buffer: fetched.buffer,
     sourceKey: key,
     mainKey,
     params,
   });
 
-  if (encoded.larger) {
-    return keptOriginal(encoded);
+  if (uploaded.larger) {
+    return keptOriginal(uploaded);
   }
 
   if (context.settings.deleteOriginal && mainKey !== key) {
     await context.bucket.remove(key);
   }
 
-  return converted(encoded, { to: mainKey });
+  return converted(uploaded, { to: mainKey });
 }
 
 export async function convertPlain(context, { key }) {

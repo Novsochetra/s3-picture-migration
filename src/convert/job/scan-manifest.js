@@ -20,8 +20,7 @@ function classify(key, { extensions, skipLabel }) {
   return extensions.has(extension) ? { extension } : { ignore: extension || '(no ext)' };
 }
 
-// Returns the object's manifest line, or '' when it is not a source image.
-function scanObject(object, scan, filter) {
+function manifestLineOf(object, scan, filter) {
   scan.seen++;
 
   if (object.Key.endsWith('/')) {
@@ -58,7 +57,7 @@ export async function scanToManifest({ bucket, prefix, manifestPath, filter }) {
 
   await writeLinesAtomic(manifestPath, async (write) => {
     for await (const page of bucket.pages({ prefix })) {
-      write((page.Contents ?? []).map((object) => scanObject(object, scan, filter)).join(''));
+      write((page.Contents ?? []).map((object) => manifestLineOf(object, scan, filter)).join(''));
       showProgress(scan);
     }
   });

@@ -117,7 +117,8 @@ catches: run `/code-review`, or have a fresh agent read the diff without your re
 for each new or changed function:
 
 1. How many reasons would it have to change? More than one: split it.
-2. Does it work something out and do I/O? Split the pure part out and test it.
+2. Does it work something out and do I/O? Split the pure part out and test it. Does its name
+   say it does I/O (`uploadWebpAndSizes`, not `encodeImage`)?
 3. Can a reader tell what each line does without reading another file? If not, rename.
 
 ## Versions

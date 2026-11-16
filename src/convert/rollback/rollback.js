@@ -1,5 +1,5 @@
 import { formatNumber } from '../../utils/format.js';
-import { askInSession, canAsk, closePrompt } from '../run/session-prompt.js';
+import { askInSession, canAsk, closePrompt } from '../session-prompt.js';
 import { applyRollback } from './apply-rollback.js';
 import { planRollback, planSize } from './plan-rollback.js';
 import { showPlan } from './show-plan.js';

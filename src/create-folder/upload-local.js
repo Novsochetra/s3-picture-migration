@@ -13,11 +13,13 @@ async function uploadOne(context, { abs, rel }) {
   const params = { ContentType: contentTypeOf(rel) };
   const send = () => context.bucket.upload({ key, body: fs.createReadStream(abs), params }).done();
 
-  if (!skipIfAlreadyThere(context, key, rel, size)) {
-    const from = path.relative(process.cwd(), abs);
-
-    await transferFile(context, { kind: 'uploaded', from, to: key, size, send });
+  if (skipIfAlreadyThere(context, key, rel, size)) {
+    return;
   }
+
+  const from = path.relative(process.cwd(), abs);
+
+  await transferFile(context, { counter: 'uploaded', verb: 'uploaded', from, to: key, size, send });
 }
 
 export async function uploadLocal(context) {

@@ -67,7 +67,12 @@ export default [
     rules: { ...sizeAndComplexity, ...readability, ...comments },
   },
   {
-    files: ['bin/**/*.js', 'src/cli/prompter.js', 'src/convert/run/stop-signals.js'],
+    files: [
+      'bin/**/*.js',
+      'src/cli/prompter.js',
+      'src/cli/quiet-pipe.js',
+      'src/convert/run/stop-signals.js',
+    ],
     rules: { 'no-restricted-properties': 'off' },
   },
   {
