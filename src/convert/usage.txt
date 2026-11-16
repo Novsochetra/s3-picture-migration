@@ -1,0 +1,97 @@
+s3-to-webp — convert every image under an S3 folder to WebP, resumably.
+
+Each image is downloaded into memory once, encoded with sharp and streamed back
+to S3 (no temp files), at the same path:
+  raw/2024/cat.jpg -> raw/2024/cat.webp                 (default)
+  raw/2024/cat.jpg -> raw/2024/cat.jpg  (WebP inside)   (--keep-ext)
+  raw/2024/cat.jpg -> raw/2024/cat.jpg  (WebP inside)   (--replace)
+                    + raw/2024/cat-original.jpg (backup of the original, made first)
+
+SIZES  (--sizes 320,640,1080)
+  Also writes one resized WebP per width, same aspect ratio, never enlarged.
+  Name = the main output with -<width>w before the extension:
+    --replace / --keep-ext:  cat.jpg  -> cat-320w.jpg, cat-640w.jpg, cat-1080w.jpg
+    default:                 cat.webp -> cat-320w.webp, ...
+  Every size is always written (an image narrower than a size keeps its own
+  width), so the app can request any size without a 404.
+  Adding sizes to a finished job: --fresh --sizes ...  (only missing sizes are made,
+  from the original/backup, the main image is left alone).
+
+QUICK START
+  Put your keys in .env:   AWS_ACCESS_KEY_ID=...   AWS_SECRET_ACCESS_KEY=...
+
+  npm run convert                          # menu: pick bucket + folder
+  npm run convert -- --list-buckets
+  npm run convert -- --bucket my-bucket --prefix raw/2024/
+
+RESUMING
+  Each bucket + folder is a "job" kept in ./s3-webp-jobs/<job>/:
+    job.json        settings, region, totals, last known status
+    manifest.jsonl  every image found by the scan (key + size)
+    progress.jsonl  one line per finished image (done / skipped / failed / invalid)
+    run.log         timestamped log of every run
+    failed.txt      images still failing after the last run
+  Run the same command again (or pick the job from the menu) to continue.
+  Finished images are never touched again; failed ones are retried.
+  Ctrl+C once = finish in-flight images and stop cleanly. Twice = abort now.
+
+ROLLBACK  (--rollback)
+  Puts the folder back the way it was before this script ran:
+    --replace : every image is restored from its -original backup (byte-for-byte),
+                then the backup is removed
+    default   : the .webp files made next to the originals are deleted
+    sizes     : all -<width>w copies are deleted
+  Only files this script made are touched (it checks the marker it writes into
+  each file's S3 metadata). An image the app replaced after the conversion is
+  never overwritten: it is left as is and its backup kept.
+  Not reversible without S3 versioning: --keep-ext (no backup), --delete-original.
+  Shows the plan and asks first; --dry-run shows the plan only.
+
+RUNNING A FINISHED JOB AGAIN
+  --fresh    start over: re-scan the folder and go through every image again.
+             Images that are already converted are detected in S3 and skipped.
+             The job's settings are kept; old progress moves to <job>/history/.
+  --rescan   only pick up images added since the last scan.
+  In a terminal, a finished job also offers to start over for you.
+
+OPTIONS
+  --bucket <name>          Bucket to work on (omit for the interactive menu)
+  --prefix <folder/>       Folder inside the bucket (default: whole bucket)
+  --list-buckets           Show the buckets your key can see, then exit
+  --rollback               Undo this script's changes in --prefix (see ROLLBACK)
+  --ls                     List objects in --bucket under --prefix, then exit
+                           (no --bucket = pick one from the menu)
+  --recursive              With --ls: list everything under the prefix, not just one level
+  --region <region>        Force a region (normally auto-detected per bucket)
+  --endpoint <url>         S3-compatible endpoint (DigitalOcean Spaces, R2, MinIO...)
+  --path-style             Path-style URLs (MinIO and some others need this)
+
+  Conversion settings (saved with the job, reused when resuming):
+  --quality <1-100>        WebP quality (default 80)
+  --max-width <px>         Shrink wider images to this width (never enlarges)
+  --sizes <w,w,...>        Also write resized copies at these widths (see SIZES);
+                           --sizes none removes the setting from a job
+  --ext <list>             Source extensions (default jpg,jpeg,png,gif,tif,tiff)
+  --keep-ext               Overwrite the original key in place (Content-Type image/webp)
+  --replace                Like --keep-ext, but first back up the original as
+                           <name>-original.<ext>. App URLs stay the same. Backups are
+                           never converted, and a later --rescan skips them.
+  --backup-suffix <s>      With --replace: backup name suffix (default -original)
+  --delete-original        Delete the source after its .webp is uploaded
+  --overwrite              Re-convert even when the .webp already exists
+  --allow-larger           Upload even when the WebP is bigger than the original
+  --acl <acl>              ACL for uploads, e.g. public-read
+
+  Run behaviour:
+  --concurrency <n>        Images in flight at once (default 4). Each one holds its
+                           source file + decoded pixels in RAM, so lower this for
+                           very large originals.
+  --retries <n>            Retries per image for network/S3 errors (default 3)
+  --max-consecutive-failures <n>  Stop the run after n failures in a row (default 10)
+  --retry-failed           Also retry images marked invalid (corrupt/unsupported)
+  --rescan                 Re-list the folder (pick up files added since the scan)
+  --fresh                  Start the job over (settings kept, old progress -> history/)
+  --jobs-dir <dir>         Where job folders live (default ./s3-webp-jobs)
+  --dry-run                Scan and show what would be done, change nothing
+  -y, --yes                Don't ask for confirmation
+ 

@@ -2,17 +2,39 @@
   "name": "s3-to-webp",
   "version": "1.0.0",
   "description": "Stream images from S3, convert to WebP, upload back to the same path",
+  "private": true,
   "type": "module",
-  "main": "s3-to-webp.mjs",
+  "bin": {
+    "s3-to-webp": "bin/s3-to-webp.js",
+    "create-folder": "bin/create-folder.js"
+  },
   "scripts": {
-    "start": "node --env-file=.env s3-to-webp.mjs"
+    "convert": "node --env-file=.env bin/s3-to-webp.js",
+    "create-folder": "node --env-file=.env bin/create-folder.js",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:regression": "vitest run --project regression",
+    "check": "npm run lint && npm run format:check && npm test",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "engines": {
-    "node": ">=20.6"
+    "node": ">=20.11"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1169.0",
     "@aws-sdk/lib-storage": "^3.1169.0",
     "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.15.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "vitest": "^5.1.0"
   }
 }

@@ -1,0 +1,33 @@
+create-folder — set up the migration test folder in S3 and fill it with
+original images.
+
+Default folder: raw/partner/sochetra-image-migration/profile/
+
+  # create the folder
+  npm run create-folder -- --bucket my-bucket
+
+  # upload originals from your computer (files and/or folders; repeat --upload)
+  npm run create-folder -- --bucket my-bucket --upload ./originals --upload ./cover.jpg
+
+  # copy originals that are already in the bucket (server-side, nothing is downloaded)
+  npm run create-folder -- --bucket my-bucket --copy-from "raw/partner/123/profile"
+  npm run create-folder -- --bucket my-bucket --copy-from "raw/partner/123/profile/avatar.jpg"
+
+  # empty the folder (ONLY allowed for raw/partner/sochetra-image-migration/profile/)
+  npm run create-folder -- --bucket my-bucket --empty
+
+  # reset + reload in one go: empty first, then copy fresh originals in
+  npm run create-folder -- --bucket my-bucket --empty --copy-from "raw/partner/123/profile"
+
+Options:
+  --bucket <name>       Bucket (default: BUCKET_NAME from the environment / .env)
+  --path <folder>       Folder to work on (default: raw/partner/sochetra-image-migration/profile)
+  --upload <path>       Local file or folder to upload into the folder (repeatable)
+  --copy-from <s3path>  Folder or single file in the same bucket to copy in (repeatable)
+  --empty               Delete everything inside the folder; the folder itself stays
+  --overwrite           Re-upload / re-copy files that are already there with the same size
+  -y, --yes             Don't ask before emptying (required when not run in a terminal)
+  --region <r>          Optional; the bucket's region is found automatically
+  --endpoint <url>      S3-compatible endpoint (Spaces, R2, MinIO...)
+  --path-style          Path-style URLs (MinIO and some others need this)
+ 
