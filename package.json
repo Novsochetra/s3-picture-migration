@@ -1,0 +1,18 @@
+{
+  "name": "s3-to-webp",
+  "version": "1.0.0",
+  "description": "Stream images from S3, convert to WebP, upload back to the same path",
+  "type": "module",
+  "main": "s3-to-webp.mjs",
+  "scripts": {
+    "start": "node --env-file=.env s3-to-webp.mjs"
+  },
+  "engines": {
+    "node": ">=20.6"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1169.0",
+    "@aws-sdk/lib-storage": "^3.1169.0",
+    "sharp": "^0.35.5"
+  }
+}
