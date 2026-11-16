@@ -1,7 +1,7 @@
 import { backupKeyFor } from '../naming.js';
-import { encodeUpload } from './encode-upload.js';
+import { converted, encodeImage, keptOriginal, SOURCE_GONE } from './encode-image.js';
 import { fetchBuffer } from './fetch-buffer.js';
-import { addMissingSizes, makeAllSizes } from './sizes.js';
+import { addMissingSizes } from './sizes.js';
 
 // A server-side copy of exactly the version that was looked at.
 async function ensureBackup({ bucket }, { key, current, backupKey }) {
@@ -33,31 +33,34 @@ function originalParams({ conditionalWrites }, current, backupKey) {
   };
 }
 
-async function encodeOverOriginal(context, { key, current, backupKey, createdBackup }) {
+// The backup is the only copy of the original once the WebP is written over it, so it is
+// dropped only while the original still sits untouched at its key.
+async function dropBackupIfOriginalUntouched({ bucket }, { key, current, backupKey }) {
+  const now = await bucket.head(key);
+
+  if (now?.ETag === current.ETag) {
+    await bucket.remove(backupKey).catch(() => {});
+  }
+}
+
+async function encodeOverOriginal(context, target) {
+  const { key, current, backupKey, createdBackup } = target;
   const { buffer } = await fetchBuffer(context, backupKey);
+  const params = originalParams(context, current, backupKey);
 
   try {
-    const main = await encodeUpload(context, {
-      buffer,
-      sourceKey: backupKey,
-      targetKey: key,
-      limit: context.settings.allowLarger ? null : buffer.length,
-      params: originalParams(context, current, backupKey),
-    });
-
-    return { buffer, main };
+    return await encodeImage(context, { buffer, sourceKey: backupKey, mainKey: key, params });
   } catch (error) {
-    // The original was never touched, so the extra copy goes; after a network error it is
-    // kept for the retry.
+    // After a network error the backup is kept for the retry.
     if (error.permanent && createdBackup) {
-      await context.bucket.remove(backupKey).catch(() => {});
+      await dropBackupIfOriginalUntouched(context, target);
     }
 
     throw error;
   }
 }
 
-async function sizesOfConverted(context, { key, current, backupKey }) {
+async function addSizesToConverted(context, { key, current, backupKey }) {
   const added = await addMissingSizes(context, {
     mainKey: key,
     preferredSource: backupKey,
@@ -66,7 +69,7 @@ async function sizesOfConverted(context, { key, current, backupKey }) {
     reason: 'main image already webp',
   });
 
-  return added ?? { st: 'skipped', reason: 'already webp' };
+  return added ?? { status: 'skipped', reason: 'already webp' };
 }
 
 // Every step is safe to repeat, so a crash anywhere resumes on the next run.
@@ -75,38 +78,21 @@ export async function replaceWithBackup(context, { key }) {
   const current = await context.bucket.head(key);
 
   if (!current) {
-    return { st: 'skipped', reason: 'source no longer exists' };
+    return SOURCE_GONE;
   }
 
   if (current.ContentType === 'image/webp') {
-    return sizesOfConverted(context, { key, current, backupKey });
+    return addSizesToConverted(context, { key, current, backupKey });
   }
 
   const createdBackup = await ensureBackup(context, { key, current, backupKey });
-  const target = { key, current, backupKey, createdBackup };
-  const { buffer, main } = await encodeOverOriginal(context, target);
-  const cacheControl = current.CacheControl;
-  const vout = await makeAllSizes(context, {
-    buffer,
-    sourceKey: backupKey,
-    mainKey: key,
-    cacheControl,
-  });
-  const sizes = context.settings.sizes ?? [];
+  const encoded = await encodeOverOriginal(context, { key, current, backupKey, createdBackup });
 
-  if (main.larger) {
-    if (createdBackup) {
-      await context.bucket.remove(backupKey);
-    }
-
-    return {
-      st: 'skipped',
-      reason: 'webp would be larger; original kept',
-      in: buffer.length,
-      sizes,
-      vout,
-    };
+  if (encoded.larger && createdBackup) {
+    await context.bucket.remove(backupKey);
   }
 
-  return { st: 'done', to: key, backup: backupKey, in: buffer.length, out: main.out, sizes, vout };
+  return encoded.larger
+    ? keptOriginal(encoded)
+    : converted(encoded, { to: key, backup: backupKey });
 }

@@ -9,6 +9,3 @@ export async function listSizes(bucket, prefix) {
 
   return sizes;
 }
-
-export const isAlreadyThere = ({ args, existing }, key, size) =>
-  !args.overwrite && existing.get(key) === size;

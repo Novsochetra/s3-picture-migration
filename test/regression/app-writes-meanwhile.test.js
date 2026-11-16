@@ -34,10 +34,33 @@ describe('an image the app replaces during the run', () => {
     const { convert, log } = converterFor(bucket, REPLACE);
     const result = await convert({ key: 'raw/cat.jpg' });
 
-    expect(result).toMatchObject({ st: 'done', attempts: 2 });
+    expect(result).toMatchObject({ status: 'done', attempts: 2 });
     expect(log.text()).toMatch(/the app replaced it/);
     expect(bucket.bodyOf('raw/cat-original.jpg').equals(newUpload)).toBe(true);
     expect((await bucket.head('raw/cat.jpg')).ContentType).toBe('image/webp');
+  });
+});
+
+// The backup is the only copy of the original once the WebP is written over it.
+describe('a size that fails after the WebP replaced the original', () => {
+  it('keeps the backup', async () => {
+    const bucket = createMemoryBucket('test-bucket', {
+      beforeUpload: (key) => {
+        if (key === 'raw/cat-100w.jpg') {
+          throw Object.assign(new Error('unsupported image'), { permanent: true });
+        }
+      },
+    });
+
+    bucket.seed('raw/cat.jpg', firstUpload);
+
+    const result = await converterFor(bucket, { ...REPLACE, sizes: [100] }).convert({
+      key: 'raw/cat.jpg',
+    });
+
+    expect(result).toMatchObject({ status: 'invalid' });
+    expect((await bucket.head('raw/cat.jpg')).ContentType).toBe('image/webp');
+    expect(bucket.bodyOf('raw/cat-original.jpg').equals(firstUpload)).toBe(true);
   });
 });
 

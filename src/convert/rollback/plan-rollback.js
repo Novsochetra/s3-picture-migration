@@ -18,18 +18,17 @@ async function listObjects(bucket, prefix) {
   return objects;
 }
 
-async function classifyBackup(bucket, { backupKey, suffix, objects }) {
-  const mainKey = mainKeyForBackup(backupKey, suffix);
-  const current = await bucket.head(mainKey);
-  const backup = objects.get(backupKey);
+const leave = (key, why) => ({ leave: { key, why } });
 
+const isConvertedFrom = (current, backupKey) =>
+  decodeURIComponent(current.Metadata?.['original-backup'] ?? '') === backupKey;
+
+function backupVerdict({ mainKey, current, backupKey, backup }) {
   if (!current) {
-    const why = `no longer exists (deleted after conversion?); backup ${backupKey} kept`;
-
-    return { leave: { key: mainKey, why } };
+    return leave(mainKey, `no longer exists (deleted after conversion?); backup ${backupKey} kept`);
   }
 
-  if (decodeURIComponent(current.Metadata?.['original-backup'] ?? '') === backupKey) {
+  if (isConvertedFrom(current, backupKey)) {
     const { size, etag: backupEtag } = backup;
 
     return { restore: { mainKey, backupKey, mainEtag: current.ETag, backupEtag, size } };
@@ -39,9 +38,17 @@ async function classifyBackup(bucket, { backupKey, suffix, objects }) {
     return { unusedBackup: backupKey };
   }
 
-  const why = `changed after the conversion (new upload?); left as is, backup ${backupKey} kept`;
+  return leave(
+    mainKey,
+    `changed after the conversion (new upload?); left as is, backup ${backupKey} kept`,
+  );
+}
 
-  return { leave: { key: mainKey, why } };
+async function classifyBackup(bucket, { backupKey, suffix, objects }) {
+  const mainKey = mainKeyForBackup(backupKey, suffix);
+  const current = await bucket.head(mainKey);
+
+  return backupVerdict({ mainKey, current, backupKey, backup: objects.get(backupKey) });
 }
 
 async function classifyCopy(bucket, { key, objects }) {

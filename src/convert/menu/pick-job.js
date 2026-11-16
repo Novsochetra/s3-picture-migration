@@ -1,3 +1,4 @@
+import { askUntilValid } from '../../cli/prompter.js';
 import { formatDateTime, formatNumber, percent } from '../../utils/format.js';
 
 function describeJob(job) {
@@ -16,31 +17,26 @@ function describeJob(job) {
   );
 }
 
+function showJobs(jobs) {
+  console.log('\nUnfinished jobs on this machine:');
+  jobs.forEach((job, i) => {
+    const number = String(i + 1).padStart(3);
+
+    console.log(`  ${number})  s3://${job.bucket}/${job.prefix}   ${describeJob(job)}`);
+  });
+}
+
+// Enter picks no job (null): the user starts a new one.
 export async function pickUnfinishedJob(prompt, jobs) {
   if (!jobs.length) {
     return null;
   }
 
-  console.log('\nUnfinished jobs on this machine:');
-  jobs.forEach((job, i) => {
-    console.log(
-      `  ${String(i + 1).padStart(3)})  s3://${job.bucket}/${job.prefix}   ${describeJob(job)}`,
-    );
-  });
+  showJobs(jobs);
 
-  for (;;) {
-    const answer = await prompt.ask('\nResume a job [number], or press Enter for a new one: ');
+  const question = '\nResume a job [number], or press Enter for a new one: ';
 
-    if (answer === '') {
-      return null;
-    }
-
-    const job = jobs[Number(answer) - 1];
-
-    if (job) {
-      return job;
-    }
-
-    console.log('  Not a valid choice.');
-  }
+  return askUntilValid(prompt, question, (answer) =>
+    answer === '' ? null : jobs[Number(answer) - 1],
+  );
 }

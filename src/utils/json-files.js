@@ -17,6 +17,20 @@ export function writeJsonAtomic(file, data) {
   fs.renameSync(temporary, file);
 }
 
+// Renamed into place only once fill() finishes, so an interrupted write never replaces the file.
+export async function writeLinesAtomic(file, fill) {
+  const temporary = `${file}.tmp`;
+  const fd = fs.openSync(temporary, 'w');
+
+  try {
+    await fill((text) => fs.writeSync(fd, text));
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  fs.renameSync(temporary, file);
+}
+
 function parseLine(line) {
   try {
     return JSON.parse(line);

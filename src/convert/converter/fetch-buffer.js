@@ -1,25 +1,25 @@
 import { isNotFound } from '../../s3/errors.js';
+import { whileActive } from './active-transfers.js';
+
+function checkComplete(buffer, expectedLength) {
+  if (expectedLength !== undefined && expectedLength !== null && buffer.length !== expectedLength) {
+    throw new Error(`download incomplete (${buffer.length} of ${expectedLength} bytes)`);
+  }
+}
 
 // The whole file is read before sharp sees it, so a sharp error is about the file itself,
 // never a half-finished download.
 export async function fetchBuffer({ bucket, state }, key) {
   const download = await bucket.open(key);
-  const handle = { abort: async () => download.abort() };
+  const buffer = await whileActive(
+    state,
+    async () => download.abort(),
+    () => download.read(),
+  );
 
-  state.active.add(handle);
+  checkComplete(buffer, download.response.ContentLength);
 
-  try {
-    const buffer = await download.read();
-    const expected = download.response.ContentLength;
-
-    if (expected !== undefined && expected !== null && buffer.length !== expected) {
-      throw new Error(`download incomplete (${buffer.length} of ${expected} bytes)`);
-    }
-
-    return { buffer, response: download.response };
-  } finally {
-    state.active.delete(handle);
-  }
+  return { buffer, response: download.response };
 }
 
 export async function fetchIfExists(context, key) {

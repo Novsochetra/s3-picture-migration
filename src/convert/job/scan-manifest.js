@@ -1,10 +1,12 @@
-import fs from 'node:fs';
 import { extensionOf } from '../../s3/keys.js';
 import { formatBytes, formatNumber } from '../../utils/format.js';
+import { writeLinesAtomic } from '../../utils/json-files.js';
 
-const addTo = (counts, label) => {
+const countIn = (counts, label) => {
   counts[label] = (counts[label] ?? 0) + 1;
 };
+
+const emptyScan = () => ({ count: 0, bytes: 0, seen: 0, byExt: {}, ignored: {} });
 
 function classify(key, { extensions, skipLabel }) {
   const label = skipLabel(key);
@@ -18,57 +20,52 @@ function classify(key, { extensions, skipLabel }) {
   return extensions.has(extension) ? { extension } : { ignore: extension || '(no ext)' };
 }
 
-function scanPage(page, scan, filter) {
-  let lines = '';
+// Returns the object's manifest line, or '' when it is not a source image.
+function scanObject(object, scan, filter) {
+  scan.seen++;
 
-  for (const object of page.Contents ?? []) {
-    scan.seen++;
-
-    const kind = object.Key.endsWith('/') ? null : classify(object.Key, filter);
-
-    if (kind?.ignore) {
-      addTo(scan.ignored, kind.ignore);
-    } else if (kind) {
-      lines += `${JSON.stringify({ k: object.Key, s: object.Size ?? 0 })}\n`;
-      scan.count++;
-      scan.bytes += object.Size ?? 0;
-      addTo(scan.byExt, kind.extension);
-    }
+  if (object.Key.endsWith('/')) {
+    return '';
   }
 
-  return lines;
+  const kind = classify(object.Key, filter);
+  const size = object.Size ?? 0;
+
+  if (kind.ignore) {
+    countIn(scan.ignored, kind.ignore);
+
+    return '';
+  }
+
+  scan.count++;
+  scan.bytes += size;
+  countIn(scan.byExt, kind.extension);
+
+  return `${JSON.stringify({ k: object.Key, s: size })}\n`;
 }
 
-const showProgress = (scan) =>
-  process.stdout.write(
-    `\r  scanned ${formatNumber(scan.seen)} objects · ${formatNumber(scan.count)} images · ` +
-      `${formatBytes(scan.bytes)}   `,
-  );
+function showProgress(scan) {
+  if (process.stdout.isTTY) {
+    process.stdout.write(
+      `\r  scanned ${formatNumber(scan.seen)} objects · ${formatNumber(scan.count)} images · ` +
+        `${formatBytes(scan.bytes)}   `,
+    );
+  }
+}
 
 export async function scanToManifest({ bucket, prefix, manifestPath, filter }) {
-  const temporary = `${manifestPath}.tmp`;
-  const fd = fs.openSync(temporary, 'w');
-  const scan = { count: 0, bytes: 0, seen: 0, byExt: {}, ignored: {} };
-  const showsProgress = process.stdout.isTTY;
+  const scan = emptyScan();
 
-  try {
+  await writeLinesAtomic(manifestPath, async (write) => {
     for await (const page of bucket.pages({ prefix })) {
-      fs.writeSync(fd, scanPage(page, scan, filter));
-
-      if (showsProgress) {
-        showProgress(scan);
-      }
+      write((page.Contents ?? []).map((object) => scanObject(object, scan, filter)).join(''));
+      showProgress(scan);
     }
-  } finally {
-    fs.closeSync(fd);
-  }
+  });
 
-  if (showsProgress) {
+  if (process.stdout.isTTY) {
     process.stdout.write('\n');
   }
-
-  // Renamed only now, so an interrupted scan never becomes the manifest.
-  fs.renameSync(temporary, manifestPath);
 
   return { ...scan, at: new Date().toISOString() };
 }

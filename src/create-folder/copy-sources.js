@@ -1,9 +1,9 @@
 import { extensionOf, fileNameOf, toFolder } from '../s3/keys.js';
 import { listSizes } from './list-sizes.js';
+import { recordFailure } from './transfer.js';
 
-function fail({ stats }, message) {
-  stats.failed++;
-  console.error(`FAIL      ${message}`);
+function fail(context, message) {
+  recordFailure(context, message);
 
   return null;
 }

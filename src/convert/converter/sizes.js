@@ -18,7 +18,7 @@ export async function makeSizes(context, { buffer, sourceKey, mainKey, widths, c
       },
     });
 
-    bytes += result.out;
+    bytes += result.bytesOut;
   }
 
   return bytes;
@@ -44,9 +44,9 @@ export async function addMissingSizes(context, request) {
   const hasPreferred = preferredSource && (await context.bucket.head(preferredSource));
   const sourceKey = hasPreferred ? preferredSource : fallbackSource;
   const { buffer } = await fetchBuffer(context, sourceKey);
-  const vout = await makeSizes(context, { buffer, sourceKey, mainKey, widths, cacheControl });
+  const sizeBytes = await makeSizes(context, { buffer, sourceKey, mainKey, widths, cacheControl });
 
-  return { st: 'done', onlySizes: true, reason, to: mainKey, sizes: widths, vout };
+  return { status: 'done', onlySizes: true, reason, to: mainKey, sizes: widths, sizeBytes };
 }
 
 export async function makeAllSizes(context, { buffer, sourceKey, mainKey, cacheControl }) {

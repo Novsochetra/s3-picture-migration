@@ -16,26 +16,27 @@ function resultFields(key, result) {
     to: result.to && result.to !== key ? result.to : undefined,
     bak: result.backup || undefined,
     sizes: hasSizes ? result.sizes : undefined,
-    vout: hasSizes ? result.vout : undefined,
+    vout: hasSizes ? result.sizeBytes : undefined,
   };
 }
 
-// The short field names keep a line small: a job can hold millions of them.
+// The short field names keep a line small: a job can hold millions of them. Earlier runs
+// wrote these names, so they never change.
 export function progressEntry(key, result, ms) {
   return {
     t: new Date().toISOString(),
     k: key,
-    st: result.st,
+    st: result.status,
     ...resultFields(key, result),
-    in: valueOrNothing(result.in),
-    out: valueOrNothing(result.out),
-    err: result.err || undefined,
+    in: valueOrNothing(result.bytesIn),
+    out: valueOrNothing(result.bytesOut),
+    err: result.error || undefined,
     tries: result.attempts > 1 ? result.attempts : undefined,
     ms,
   };
 }
 
-const latestState = (status, error) => (error ? { st: status, err: error } : { st: status });
+const latestState = (status, error) => (error ? { status, error } : { status });
 
 // Append-only and written synchronously, so a crash loses only the images still in flight.
 export class ProgressStore {
@@ -67,16 +68,16 @@ export class ProgressStore {
 
   record(key, result, ms) {
     fs.writeSync(this.fd, `${JSON.stringify(progressEntry(key, result, ms))}\n`);
-    this.entries.set(key, latestState(result.st, result.err));
+    this.entries.set(key, latestState(result.status, result.error));
   }
 
   status(key) {
-    return this.entries.get(key)?.st;
+    return this.entries.get(key)?.status;
   }
 
   problems() {
     return [...this.entries]
-      .filter(([, entry]) => entry.st === 'failed' || entry.st === 'invalid')
-      .map(([key, entry]) => `${entry.st}\t${key}\t${entry.err ?? ''}`);
+      .filter(([, entry]) => entry.status === 'failed' || entry.status === 'invalid')
+      .map(([key, entry]) => `${entry.status}\t${key}\t${entry.error ?? ''}`);
   }
 }

@@ -50,7 +50,7 @@ async function work(session, run, { source, convert }) {
     const result = await convert(item);
 
     // Not recorded, so the image is redone on resume.
-    if (result.st === 'aborted' || run.state.hardStop) {
+    if (result.status === 'aborted' || run.state.hardStop) {
       return;
     }
 
@@ -71,8 +71,28 @@ function converterFor({ bucket, settings, log, limits, connection }, run) {
   });
 }
 
+// Saves the status every 30 s and handles Ctrl+C; returns what stops both.
+function watchRun(session, run) {
+  const { log, jobFiles } = session;
+  const signals = installStopSignals(session, run);
+  const ticker = setInterval(() => {
+    log.info(statusLine(run));
+    jobFiles.saveStatus(run.counts);
+  }, STATUS_EVERY_MS);
+
+  return () => {
+    clearInterval(ticker);
+
+    // After a hard stop the signal handler still has to save the progress and exit.
+    if (!run.state.hardStop) {
+      signals.remove();
+      run.progress.close();
+    }
+  };
+}
+
 export async function convertAll(session, preparedWork) {
-  const { log, limits, jobFiles } = session;
+  const { concurrency } = session.limits;
   const run = newRun(preparedWork);
   const workers = { source: pendingItems(session, run), convert: converterFor(session, run) };
 
@@ -80,20 +100,11 @@ export async function convertAll(session, preparedWork) {
   sharp.cache(false);
   run.progress.open();
 
-  const signals = installStopSignals(session, run);
-  const ticker = setInterval(() => {
-    log.info(statusLine(run));
-    jobFiles.saveStatus(run.counts);
-  }, STATUS_EVERY_MS);
+  const stopWatching = watchRun(session, run);
 
-  log.info(`\nConverting with concurrency ${limits.concurrency} (Ctrl+C to stop safely)\n`);
-  await Promise.all(Array.from({ length: limits.concurrency }, () => work(session, run, workers)));
-  clearInterval(ticker);
-
-  if (!run.state.hardStop) {
-    signals.remove();
-    run.progress.close();
-  }
+  session.log.info(`\nConverting with concurrency ${concurrency} (Ctrl+C to stop safely)\n`);
+  await Promise.all(Array.from({ length: concurrency }, () => work(session, run, workers)));
+  stopWatching();
 
   return run;
 }

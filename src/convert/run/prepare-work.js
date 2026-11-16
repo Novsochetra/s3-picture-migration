@@ -1,11 +1,12 @@
 import fs from 'node:fs';
-import { createPrompter, saysYes } from '../../cli/prompter.js';
+import { saysYes } from '../../cli/prompter.js';
 import { formatBytes, formatNumber } from '../../utils/format.js';
 import { ProgressStore } from '../job/progress-store.js';
 import { scanToManifest } from '../job/scan-manifest.js';
 import { tallyJob } from '../job/tally.js';
 import { isBackupKey, isVariantKey } from '../naming.js';
 import { startOverNote } from './open-session.js';
+import { askInSession, canAsk, closePrompt } from './session-prompt.js';
 import { describeJobStatus, describeScan } from './status-line.js';
 
 const RESTART_QUESTION =
@@ -42,50 +43,64 @@ async function ensureScan({ args, log, jobFiles, bucket, prefix, settings, exten
   jobFiles.save();
 }
 
+async function acceptsStartOver(session) {
+  if (session.args['dry-run'] || !canAsk(session)) {
+    return false;
+  }
+
+  return saysYes(await askInSession(session, RESTART_QUESTION));
+}
+
 // Nothing is left: offer to start over, so the user never has to delete the job folder.
 async function offerStartOver(session) {
-  const { args, log, jobFiles, resumeCommand } = session;
+  const { log, jobFiles, resumeCommand } = session;
 
   log.info('\nThis job is complete: every image found by the scan has been handled.');
 
-  if (!args['dry-run'] && (session.prompt || process.stdin.isTTY)) {
-    session.prompt ??= createPrompter();
+  if (await acceptsStartOver(session)) {
+    log.info(`${startOverNote(jobFiles.startOver())}\n`);
 
-    if (saysYes(await session.prompt.ask(RESTART_QUESTION))) {
-      log.info(`${startOverNote(jobFiles.startOver())}\n`);
-
-      return true;
-    }
+    return true;
   }
 
   log.info(`To run it again from the start:        ${resumeCommand} --fresh`);
   log.info(`To only pick up images added since:    ${resumeCommand} --rescan`);
-  session.prompt?.close();
+  closePrompt(session);
 
   return false;
 }
 
-export async function prepareWork(session) {
+async function loadWork(session) {
   const { log, jobFiles, limits } = session;
+  const progress = new ProgressStore(jobFiles.paths.progress);
 
-  for (let restarted = false; ; restarted = true) {
-    await ensureScan(session);
+  await ensureScan(session);
+  await progress.load();
 
-    const progress = new ProgressStore(jobFiles.paths.progress);
+  const manifestPath = jobFiles.paths.manifest;
+  const counts = await tallyJob({ manifestPath, progress, retryFailed: limits.retryFailed });
 
-    await progress.load();
+  log.info(describeJobStatus(counts, limits.retryFailed));
+  jobFiles.saveStatus(counts);
 
-    const manifestPath = jobFiles.paths.manifest;
-    const counts = await tallyJob({ manifestPath, progress, retryFailed: limits.retryFailed });
+  return { progress, counts };
+}
 
-    log.info(describeJobStatus(counts, limits.retryFailed));
-    jobFiles.saveStatus(counts);
+// null when nothing is left and the user does not start the job over. A job started over
+// here is already confirmed, so the run does not ask again.
+export async function prepareWork(session) {
+  let confirmed = false;
 
-    if (counts.total > counts.completed) {
-      return { progress, counts, confirmed: restarted };
+  for (;;) {
+    const work = await loadWork(session);
+
+    if (work.counts.total > work.counts.completed) {
+      return { ...work, confirmed };
     }
 
-    if (!(await offerStartOver(session))) {
+    confirmed = await offerStartOver(session);
+
+    if (!confirmed) {
       return null;
     }
   }

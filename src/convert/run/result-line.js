@@ -10,11 +10,11 @@ function sizesText(result) {
 
   const widths = result.sizes.map((width) => `${width}w`).join(',');
 
-  return ` + sizes ${widths} (${formatBytes(result.vout)})`;
+  return ` + sizes ${widths} (${formatBytes(result.sizeBytes)})`;
 }
 
 function convertedText({ key, result, ms, deleteOriginal }) {
-  const saved = result.in ? Math.round((1 - result.out / result.in) * 100) : 0;
+  const saved = result.bytesIn ? Math.round((1 - result.bytesOut / result.bytesIn) * 100) : 0;
   const where = result.backup
     ? `(now webp, backup ${fileNameOf(result.backup)})`
     : `-> ${result.to}`;
@@ -22,7 +22,7 @@ function convertedText({ key, result, ms, deleteOriginal }) {
   const reason = result.reason ? ` [${result.reason}]` : '';
 
   return (
-    `ok     ${key} ${where}  ${formatBytes(result.in)} -> ${formatBytes(result.out)} ` +
+    `ok     ${key} ${where}  ${formatBytes(result.bytesIn)} -> ${formatBytes(result.bytesOut)} ` +
     `(${signedPercent(saved)})${sizesText(result)} ${seconds(ms)}${deleted}${reason}`
   );
 }
@@ -30,25 +30,25 @@ function convertedText({ key, result, ms, deleteOriginal }) {
 function describe(outcome) {
   const { key, result, ms } = outcome;
 
-  if (result.st === 'done' && result.onlySizes) {
+  if (result.status === 'done' && result.onlySizes) {
     const added = sizesText(result) || ' (nothing new)';
 
     return ['info', `ok     ${key}${added} [${result.reason}] ${seconds(ms)}`];
   }
 
-  if (result.st === 'done') {
+  if (result.status === 'done') {
     return ['info', convertedText(outcome)];
   }
 
-  if (result.st === 'skipped') {
+  if (result.status === 'skipped') {
     return ['info', `skip   ${key} (${result.reason})${sizesText(result)}`];
   }
 
-  if (result.st === 'invalid') {
-    return ['error', `BAD    ${key}: ${result.err}`];
+  if (result.status === 'invalid') {
+    return ['error', `BAD    ${key}: ${result.error}`];
   }
 
-  return ['error', `FAIL   ${key} after ${result.attempts} attempt(s): ${result.err}`];
+  return ['error', `FAIL   ${key} after ${result.attempts} attempt(s): ${result.error}`];
 }
 
 export function resultLine(progressText, outcome) {
@@ -58,17 +58,17 @@ export function resultLine(progressText, outcome) {
 }
 
 export function countResult(stats, result) {
-  const isDone = result.st === 'done';
+  const isDone = result.status === 'done';
 
-  stats.sizeBytes += result.vout ?? 0;
+  stats.sizeBytes += result.sizeBytes ?? 0;
 
   if (isDone && result.onlySizes) {
     stats.sized++;
   } else if (isDone) {
     stats.ok++;
-    stats.bytesIn += result.in ?? 0;
-    stats.bytesOut += result.out ?? 0;
+    stats.bytesIn += result.bytesIn ?? 0;
+    stats.bytesOut += result.bytesOut ?? 0;
   } else {
-    stats[result.st]++;
+    stats[result.status]++;
   }
 }

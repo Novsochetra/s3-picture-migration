@@ -3,6 +3,8 @@ import { createBucket } from './bucket.js';
 import { createS3Client, fallbackRegion } from './client.js';
 import { isCredentialError } from './errors.js';
 
+// S3 reports its first region as no region at all, and an old EU bucket as "EU".
+const FIRST_REGION = 'us-east-1';
 const LEGACY_EU_REGION = 'eu-west-1';
 
 async function regionFromLocation(probe, bucketName) {
@@ -12,7 +14,7 @@ async function regionFromLocation(probe, bucketName) {
     );
 
     if (!location) {
-      return 'us-east-1';
+      return FIRST_REGION;
     }
 
     return location === 'EU' ? LEGACY_EU_REGION : location;
@@ -29,7 +31,7 @@ async function regionFromHead(probe, bucketName) {
   try {
     const response = await probe.send(new HeadBucketCommand({ Bucket: bucketName }));
 
-    return response.BucketRegion ?? 'us-east-1';
+    return response.BucketRegion ?? FIRST_REGION;
   } catch (error) {
     if (isCredentialError(error)) {
       throw error;
@@ -50,7 +52,7 @@ export async function detectBucketRegion(bucketName, connection) {
     return fallbackRegion(connection);
   }
 
-  const probe = createS3Client({ region: 'us-east-1', connection });
+  const probe = createS3Client({ region: FIRST_REGION, connection });
 
   return (await regionFromLocation(probe, bucketName)) ?? (await regionFromHead(probe, bucketName));
 }

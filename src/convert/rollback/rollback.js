@@ -1,44 +1,41 @@
-import { createPrompter } from '../../cli/prompter.js';
 import { formatNumber } from '../../utils/format.js';
+import { askInSession, canAsk, closePrompt } from '../run/session-prompt.js';
 import { applyRollback } from './apply-rollback.js';
 import { planRollback, planSize } from './plan-rollback.js';
 import { showPlan } from './show-plan.js';
 
 function stopWith(session, message) {
   session.log.info(message);
-  session.prompt?.close();
+  closePrompt(session);
 
   return false;
 }
 
-async function confirmRollback(session, plan) {
-  const { args, bucket, prefix } = session;
+async function userTypesYes(session) {
+  if (!canAsk(session)) {
+    throw new Error('Not running in a terminal: add --yes to confirm the rollback.');
+  }
 
+  const where = `s3://${session.bucket.name}/${session.prefix}`;
+  const answer = await askInSession(session, `\nType "yes" to roll back ${where}: `);
+
+  return answer.toLowerCase() === 'yes';
+}
+
+async function confirmRollback(session, plan) {
   if (!planSize(plan)) {
     return stopWith(session, '\nNothing to roll back.');
   }
 
-  if (args['dry-run']) {
+  if (session.args['dry-run']) {
     return stopWith(session, '\nDry run: nothing was changed.');
   }
 
-  if (!args.yes) {
-    if (!session.prompt && !process.stdin.isTTY) {
-      throw new Error('Not running in a terminal: add --yes to confirm the rollback.');
-    }
-
-    session.prompt ??= createPrompter();
-
-    const answer = await session.prompt.ask(
-      `\nType "yes" to roll back s3://${bucket.name}/${prefix}: `,
-    );
-
-    if (answer.toLowerCase() !== 'yes') {
-      return stopWith(session, 'Cancelled: nothing was changed.');
-    }
+  if (!session.args.yes && !(await userTypesYes(session))) {
+    return stopWith(session, 'Cancelled: nothing was changed.');
   }
 
-  session.prompt?.close();
+  closePrompt(session);
 
   return true;
 }
