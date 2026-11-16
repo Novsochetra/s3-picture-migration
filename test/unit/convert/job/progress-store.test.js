@@ -16,7 +16,7 @@ describe('progressEntry', () => {
   it('leaves out empty fields and a target equal to the key', () => {
     const entry = progressEntry(
       'raw/a.jpg',
-      { status: 'skipped', reason: 'already webp', to: 'raw/a.jpg', attempts: 1 },
+      { st: 'skipped', reason: 'already webp', to: 'raw/a.jpg', attempts: 1 },
       12,
     );
 
@@ -30,11 +30,7 @@ describe('progressEntry', () => {
   });
 
   it('keeps a zero byte count and the number of tries', () => {
-    const entry = progressEntry(
-      'raw/a.jpg',
-      { status: 'done', bytesIn: 0, bytesOut: 0, attempts: 3 },
-      5,
-    );
+    const entry = progressEntry('raw/a.jpg', { st: 'done', in: 0, out: 0, attempts: 3 }, 5);
 
     expect(entry).toMatchObject({ in: 0, out: 0, tries: 3 });
   });

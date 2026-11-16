@@ -19,7 +19,7 @@ async function chooseInMenu({ args, connection, log, connect }, prompt) {
   const { bucket, region } = await connect(picked.name, { connection, knownRegion, log });
   const prefix = await browseFolders(bucket, prompt);
 
-  return prefix === null ? null : { bucketName: picked.name, prefix, region };
+  return { bucketName: picked.name, prefix, region };
 }
 
 export async function chooseTarget(context) {
@@ -30,13 +30,6 @@ export async function chooseTarget(context) {
   }
 
   const prompt = createPrompter();
-  const target = await chooseInMenu(context, prompt);
 
-  if (!target) {
-    prompt.close();
-
-    return null;
-  }
-
-  return { ...target, prompt };
+  return { ...(await chooseInMenu(context, prompt)), prompt };
 }

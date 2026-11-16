@@ -57,34 +57,20 @@ async function deleteBatch({ bucket, existing, stats }, batch) {
     });
 }
 
-function checkEmptyable({ bucket, folder }) {
+export async function emptyFolder(context) {
+  const { bucket, folder, existing } = context;
+
   if (!folder.startsWith(EMPTYABLE_FOLDER)) {
     throw new Error(
       `--empty only works inside s3://${bucket.name}/${EMPTYABLE_FOLDER}\n` +
         `       Refusing to empty s3://${bucket.name}/${folder}`,
     );
   }
-}
 
-const keysInside = ({ folder, existing }) =>
-  [...existing.keys()].filter((key) => key !== folder && key.startsWith(folder));
-
-async function deleteKeys(context, keys) {
-  for (const batch of chunk(keys, DELETE_BATCH)) {
-    await deleteBatch(context, batch);
-  }
-
-  console.log(`Deleted ${context.stats.deleted} object(s).`);
-}
-
-// false when the user cancels, so nothing else runs.
-export async function emptyFolder(context) {
-  checkEmptyable(context);
-
-  const keys = keysInside(context);
+  const keys = [...existing.keys()].filter((key) => key !== folder && key.startsWith(folder));
 
   if (!keys.length) {
-    console.log(`Already empty: s3://${context.bucket.name}/${context.folder}`);
+    console.log(`Already empty: s3://${bucket.name}/${folder}`);
 
     return true;
   }
@@ -97,7 +83,11 @@ export async function emptyFolder(context) {
     return false;
   }
 
-  await deleteKeys(context, keys);
+  for (const batch of chunk(keys, DELETE_BATCH)) {
+    await deleteBatch(context, batch);
+  }
+
+  console.log(`Deleted ${context.stats.deleted} object(s).`);
 
   return true;
 }

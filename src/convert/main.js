@@ -11,18 +11,6 @@ import { openSession } from './run/open-session.js';
 
 const USAGE_FILE = new URL('./usage.txt', import.meta.url);
 
-async function runJob(context) {
-  const target = await chooseTarget(context);
-
-  if (!target) {
-    return 0;
-  }
-
-  const session = await openSession(context, target);
-
-  return context.args.rollback ? rollback(session) : convertJob(session);
-}
-
 // connect and log are swapped out by the tests.
 export async function runConvert(argv, { connect = connectBucket, log = createLogger() } = {}) {
   const args = parseConvertArgs(argv);
@@ -37,5 +25,11 @@ export async function runConvert(argv, { connect = connectBucket, log = createLo
     return listBucketsCommand(context);
   }
 
-  return args.ls ? lsCommand(context) : runJob(context);
+  if (args.ls) {
+    return lsCommand(context);
+  }
+
+  const session = await openSession(context, await chooseTarget(context));
+
+  return args.rollback ? rollback(session) : convertJob(session);
 }

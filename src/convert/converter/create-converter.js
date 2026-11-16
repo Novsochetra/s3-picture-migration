@@ -13,50 +13,47 @@ const failureMessage = (error) =>
     ? 'file changed during conversion (the app replaced it); retrying with the new version'
     : explainError(error);
 
-// The result to keep, or null when the error is worth another attempt.
-function finalOutcome(context, error, attempt) {
+function giveUp(context, error, attempt) {
   if (context.state.hardStop) {
-    return { status: 'aborted' };
+    return { st: 'aborted' };
   }
 
   const message = failureMessage(error);
 
   if (error.permanent) {
-    return { status: 'invalid', error: message, attempts: attempt };
+    return { st: 'invalid', err: message, attempts: attempt };
   }
 
   if (attempt > context.retries || context.state.stopping) {
-    return { status: 'failed', error: message, attempts: attempt };
+    return { st: 'failed', err: message, attempts: attempt };
   }
 
   return null;
 }
 
-async function waitBeforeRetry(context, { item, error, attempt }) {
-  const delay = retryDelay(attempt);
-  const seconds = (delay / 1000).toFixed(1);
-  const next = `attempt ${attempt + 1}/${context.retries + 1}`;
-
-  context.log.warn(`retry  ${item.key} in ${seconds}s (${next}): ${failureMessage(error)}`);
-  await (context.wait ?? sleep)(delay);
-}
-
 export function createConverter(context) {
   const convertOnce = (item) =>
     context.settings.backupSuffix ? replaceWithBackup(context, item) : convertPlain(context, item);
+  const wait = context.wait ?? sleep;
 
   return async function convert(item) {
     for (let attempt = 1; ; attempt++) {
       try {
         return { ...(await convertOnce(item)), attempts: attempt };
       } catch (error) {
-        const outcome = finalOutcome(context, error, attempt);
+        const outcome = giveUp(context, error, attempt);
 
         if (outcome) {
           return outcome;
         }
 
-        await waitBeforeRetry(context, { item, error, attempt });
+        const delay = retryDelay(attempt);
+        const next = `attempt ${attempt + 1}/${context.retries + 1}`;
+
+        context.log.warn(
+          `retry  ${item.key} in ${(delay / 1000).toFixed(1)}s (${next}): ${failureMessage(error)}`,
+        );
+        await wait(delay);
       }
     }
   };

@@ -1,33 +1,44 @@
+import { formatBytes } from '../utils/format.js';
 import { runPool } from '../utils/pool.js';
 import { resolveCopySources } from './copy-sources.js';
-import { recordFailure, skipIfAlreadyThere, transferFile } from './transfer.js';
+import { isAlreadyThere } from './list-sizes.js';
 
 const COPIES_IN_FLIGHT = 4;
 const MAX_COPY_BYTES = 5 * 1024 ** 3;
 
 // A server-side copy keeps Content-Type and metadata, and no bytes pass through this machine.
 async function copyOne(context, { key, size, rel }) {
-  const destination = context.folder + rel;
-  const send = () => context.bucket.copy({ from: key, to: destination });
+  const { bucket, folder, existing, stats } = context;
+  const destination = folder + rel;
 
-  if (destination === key || skipIfAlreadyThere(context, destination, rel, size)) {
+  if (destination === key) {
+    return;
+  }
+
+  if (isAlreadyThere(context, destination, size)) {
+    stats.skipped++;
+    console.log(`skip      ${rel} (already there)`);
+
     return;
   }
 
   if (size > MAX_COPY_BYTES) {
-    recordFailure(context, `${key}: larger than 5 GB, cannot be copied in one request`);
+    stats.failed++;
+    console.error(`FAIL      ${key}: larger than 5 GB, cannot be copied in one request`);
 
     return;
   }
 
-  await transferFile(context, {
-    counter: 'copied',
-    verb: 'copied',
-    from: key,
-    to: destination,
-    size,
-    send,
-  });
+  try {
+    await bucket.copy({ from: key, to: destination });
+    existing.set(destination, size);
+    stats.copied++;
+    stats.bytes += size;
+    console.log(`copied    ${key} -> ${destination} (${formatBytes(size)})`);
+  } catch (error) {
+    stats.failed++;
+    console.error(`FAIL      ${key}: ${error.name}: ${error.message}`);
+  }
 }
 
 export async function copyFromBucket(context) {

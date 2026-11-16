@@ -18,13 +18,8 @@ describe('the default mode', () => {
     const result = await converterFor(bucket).convert({ key: 'raw/cat.jpg' });
     const webp = await bucket.head('raw/cat.webp');
 
-    expect(result).toMatchObject({
-      status: 'done',
-      to: 'raw/cat.webp',
-      bytesIn: photo.length,
-      attempts: 1,
-    });
-    expect(result.bytesOut).toBeLessThan(result.bytesIn);
+    expect(result).toMatchObject({ st: 'done', to: 'raw/cat.webp', in: photo.length, attempts: 1 });
+    expect(result.out).toBeLessThan(result.in);
     expect(webp).toMatchObject({ ContentType: 'image/webp', CacheControl: 'max-age=60' });
     expect(webp.Metadata['original-key']).toBe('raw%2Fcat.jpg');
     expect(bucket.keys()).toEqual(['raw/cat.jpg', 'raw/cat.webp']);
@@ -37,7 +32,7 @@ describe('the default mode', () => {
     await converterFor(bucket).convert({ key: 'raw/cat.jpg' });
 
     expect(await converterFor(bucket).convert({ key: 'raw/cat.jpg' })).toMatchObject({
-      status: 'skipped',
+      st: 'skipped',
       reason: 'webp already exists',
     });
   });
@@ -54,7 +49,7 @@ describe('the default mode', () => {
   it('skips an image that is gone', async () => {
     const result = await converterFor(createMemoryBucket()).convert({ key: 'raw/gone.jpg' });
 
-    expect(result).toMatchObject({ status: 'skipped', reason: 'source no longer exists' });
+    expect(result).toMatchObject({ st: 'skipped', reason: 'source no longer exists' });
   });
 });
 
@@ -87,7 +82,7 @@ describe('sizes', () => {
       key: 'raw/cat.jpg',
     });
 
-    expect(result).toMatchObject({ status: 'done', onlySizes: true, sizes: [200] });
+    expect(result).toMatchObject({ st: 'done', onlySizes: true, sizes: [200] });
     expect(bucket.keys()).toContain('raw/cat-200w.webp');
   });
 });
@@ -103,11 +98,7 @@ describe('--replace', () => {
     const result = await converterFor(bucket, replace).convert({ key: 'raw/cat.jpg' });
     const main = await bucket.head('raw/cat.jpg');
 
-    expect(result).toMatchObject({
-      status: 'done',
-      to: 'raw/cat.jpg',
-      backup: 'raw/cat-original.jpg',
-    });
+    expect(result).toMatchObject({ st: 'done', to: 'raw/cat.jpg', backup: 'raw/cat-original.jpg' });
     expect(main.ContentType).toBe('image/webp');
     expect(main.Metadata['original-backup']).toBe('raw%2Fcat-original.jpg');
     expect(bucket.bodyOf('raw/cat-original.jpg').equals(photo)).toBe(true);
@@ -120,7 +111,7 @@ describe('--replace', () => {
     await converterFor(bucket, replace).convert({ key: 'raw/cat.jpg' });
 
     expect(await converterFor(bucket, replace).convert({ key: 'raw/cat.jpg' })).toMatchObject({
-      status: 'skipped',
+      st: 'skipped',
       reason: 'already webp',
     });
   });
@@ -135,7 +126,7 @@ describe('files that cannot be converted', () => {
     const settings = { keepExt: true, backupSuffix: '-original' };
     const result = await converterFor(bucket, settings).convert({ key: 'raw/broken.jpg' });
 
-    expect(result).toMatchObject({ status: 'invalid', attempts: 1 });
+    expect(result).toMatchObject({ st: 'invalid', attempts: 1 });
     expect(bucket.keys()).toEqual(['raw/broken.jpg']);
   });
 
@@ -148,10 +139,7 @@ describe('files that cannot be converted', () => {
 
     const result = await converterFor(bucket).convert({ key: 'raw/pixel.gif' });
 
-    expect(result).toMatchObject({
-      status: 'skipped',
-      reason: 'webp would be larger; original kept',
-    });
+    expect(result).toMatchObject({ st: 'skipped', reason: 'webp would be larger; original kept' });
     expect(bucket.keys()).toEqual(['raw/pixel.gif']);
   });
 });

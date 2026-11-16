@@ -6,7 +6,7 @@ const line = (result, deleteOriginal = false) =>
 
 describe('resultLine', () => {
   it('shows a conversion with its saving', () => {
-    const result = { status: 'done', to: 'raw/cat.webp', bytesIn: 2048, bytesOut: 1024 };
+    const result = { st: 'done', to: 'raw/cat.webp', in: 2048, out: 1024 };
 
     expect(line(result)).toEqual([
       'info',
@@ -16,12 +16,12 @@ describe('resultLine', () => {
 
   it('names the backup of a replaced image and the sizes made', () => {
     const result = {
-      status: 'done',
+      st: 'done',
       backup: 'raw/cat-original.jpg',
-      bytesIn: 100,
-      bytesOut: 50,
+      in: 100,
+      out: 50,
       sizes: [320],
-      sizeBytes: 10,
+      vout: 10,
     };
 
     expect(line(result)[1]).toBe(
@@ -31,11 +31,11 @@ describe('resultLine', () => {
   });
 
   it('logs failures and invalid files as errors', () => {
-    expect(line({ status: 'failed', error: 'timeout', attempts: 4 })).toEqual([
+    expect(line({ st: 'failed', err: 'timeout', attempts: 4 })).toEqual([
       'error',
       '[ 50.0%] FAIL   raw/cat.jpg after 4 attempt(s): timeout',
     ]);
-    expect(line({ status: 'invalid', error: 'corrupt' })[0]).toBe('error');
+    expect(line({ st: 'invalid', err: 'corrupt' })[0]).toBe('error');
   });
 });
 
@@ -52,9 +52,9 @@ describe('countResult', () => {
       sizeBytes: 0,
     };
 
-    countResult(stats, { status: 'done', bytesIn: 10, bytesOut: 4, sizeBytes: 3 });
-    countResult(stats, { status: 'done', onlySizes: true, sizeBytes: 2 });
-    countResult(stats, { status: 'skipped' });
+    countResult(stats, { st: 'done', in: 10, out: 4, vout: 3 });
+    countResult(stats, { st: 'done', onlySizes: true, vout: 2 });
+    countResult(stats, { st: 'skipped' });
 
     expect(stats).toMatchObject({
       ok: 1,

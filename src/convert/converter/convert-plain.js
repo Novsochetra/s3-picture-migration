@@ -1,8 +1,9 @@
 import { mainKeyFor } from '../naming.js';
-import { converted, keptOriginal, SOURCE_GONE } from './results.js';
-import { uploadWebpAndSizes } from './upload-webp.js';
+import { encodeUpload } from './encode-upload.js';
 import { fetchIfExists } from './fetch-buffer.js';
-import { addMissingSizes } from './sizes.js';
+import { addMissingSizes, makeAllSizes } from './sizes.js';
+
+const GONE = { st: 'skipped', reason: 'source no longer exists' };
 
 async function findConverted({ bucket, settings }, { key, mainKey }) {
   if (mainKey !== key) {
@@ -12,7 +13,7 @@ async function findConverted({ bucket, settings }, { key, mainKey }) {
   const current = await bucket.head(key);
 
   if (!current) {
-    return SOURCE_GONE;
+    return GONE;
   }
 
   return current.ContentType === 'image/webp' ? current : null;
@@ -45,12 +46,12 @@ async function finishConverted(context, target) {
   if (await finishDelete(context, target)) {
     const reason = 'webp was already uploaded; original deleted';
 
-    return { ...(added ?? {}), status: 'done', onlySizes: true, reason, to: mainKey };
+    return { ...(added ?? {}), st: 'done', onlySizes: true, reason, to: mainKey };
   }
 
   const reason = sameKey ? 'already webp' : 'webp already exists';
 
-  return added ?? { status: 'skipped', reason, to: mainKey };
+  return added ?? { st: 'skipped', reason, to: mainKey };
 }
 
 const copiedParams = (response, key) => ({
@@ -63,34 +64,46 @@ async function convertFresh(context, { key, mainKey }) {
   const fetched = await fetchIfExists(context, key);
 
   if (!fetched) {
-    return SOURCE_GONE;
+    return GONE;
   }
 
-  const params = copiedParams(fetched.response, key);
-  const uploaded = await uploadWebpAndSizes(context, {
-    buffer: fetched.buffer,
+  const { buffer, response } = fetched;
+  const limit = context.settings.allowLarger ? null : buffer.length;
+  const params = copiedParams(response, key);
+  const main = await encodeUpload(context, {
+    buffer,
     sourceKey: key,
-    mainKey,
+    targetKey: mainKey,
+    limit,
     params,
   });
+  const cacheControl = response.CacheControl;
+  const vout = await makeAllSizes(context, { buffer, sourceKey: key, mainKey, cacheControl });
+  const sizes = context.settings.sizes ?? [];
 
-  if (uploaded.larger) {
-    return keptOriginal(uploaded);
+  if (main.larger) {
+    return {
+      st: 'skipped',
+      reason: 'webp would be larger; original kept',
+      in: buffer.length,
+      sizes,
+      vout,
+    };
   }
 
   if (context.settings.deleteOriginal && mainKey !== key) {
     await context.bucket.remove(key);
   }
 
-  return converted(uploaded, { to: mainKey });
+  return { st: 'done', to: mainKey, in: buffer.length, out: main.out, sizes, vout };
 }
 
 export async function convertPlain(context, { key }) {
   const mainKey = mainKeyFor(key, context.settings.keepExt);
   const existing = await findConverted(context, { key, mainKey });
 
-  if (existing === SOURCE_GONE) {
-    return SOURCE_GONE;
+  if (existing === GONE) {
+    return GONE;
   }
 
   return existing

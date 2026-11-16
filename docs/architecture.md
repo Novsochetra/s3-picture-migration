@@ -16,25 +16,21 @@ src/
   s3/                   bucket.js (the facade every request goes through), client.js, region.js
                         (finds a bucket's region from the two keys alone), buckets.js, errors.js,
                         keys.js (extension, stem, folder helpers)
-  convert/              s3-to-webp; session-prompt.js asks the user only when a step must
+  convert/              s3-to-webp
     main.js             --help, --list-buckets, --ls, then a session: --rollback or a run
     options.js          its flags and run limits; naming.js the names of backups and size copies
     settings/           defaults.js, cli-settings.js, resolve-settings.js, describe-settings.js
     job/                job-dir.js, job-files.js, progress-store.js, scan-manifest.js, tally.js
     menu/               choose-target.js over pick-job.js, pick-bucket.js, browse-folders.js
     converter/          create-converter.js (retries) over convert-plain.js and
-                        replace-with-backup.js, which share upload-webp.js (the main WebP and
-                        its sizes, over encode-upload.js, byte-counter.js and sizes.js),
-                        fetch-buffer.js and results.js; active-transfers.js keeps what Ctrl+C
-                        can abort
+                        replace-with-backup.js, which use fetch-buffer.js, encode-upload.js,
+                        byte-counter.js and sizes.js
     run/                convert-job.js over open-session.js, prepare-work.js, confirm-start.js,
-                        convert-all.js, record-result.js, wrap-up.js; status-line.js and
-                        result-line.js build the text
+                        convert-all.js, record-result.js, wrap-up.js
     rollback/           rollback.js over plan-rollback.js, show-plan.js, apply-rollback.js
-    commands/           list-buckets.js, ls.js over listing.js (rows and totals, pure)
+    commands/           list-buckets.js, ls.js
   create-folder/        main.js over empty-folder.js, ensure-folder.js, upload-local.js,
-                        copy-from-bucket.js (copy-sources.js), summary.js; transfer.js
-                        skips, sends and counts one file for upload and copy alike
+                        copy-from-bucket.js (copy-sources.js), summary.js
 test/
   unit/ integration/ regression/   mirroring src/
   support/              memory-bucket.js (the facade over a Map), images.js, capture-log.js
@@ -77,8 +73,7 @@ tests replace.
 - **`--keep-ext`**: the WebP over `cat.jpg`, no backup.
 - **`--replace`**: `cat.jpg` is copied to `cat-original.jpg` (`CopySourceIfMatch`), then the WebP is
   written over `cat.jpg` with `IfMatch`, tagged `original-backup`. If the app replaced the file
-  meanwhile, S3 refuses the write and the retry starts from the new version. A corrupt original
-  drops its backup again, but only while the original is still untouched at its key.
+  meanwhile, S3 refuses the write and the retry starts from the new version.
 - **`--sizes`**: one `-<width>w` copy per width, tagged `size-of`, never enlarged.
 
 A WebP larger than its original is not uploaded (`byteCounter` aborts the stream) unless

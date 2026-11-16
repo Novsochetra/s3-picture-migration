@@ -16,27 +16,26 @@ function resultFields(key, result) {
     to: result.to && result.to !== key ? result.to : undefined,
     bak: result.backup || undefined,
     sizes: hasSizes ? result.sizes : undefined,
-    vout: hasSizes ? result.sizeBytes : undefined,
+    vout: hasSizes ? result.vout : undefined,
   };
 }
 
-// The short field names keep a line small: a job can hold millions of them. Earlier runs
-// wrote these names, so they never change.
+// The short field names keep a line small: a job can hold millions of them.
 export function progressEntry(key, result, ms) {
   return {
     t: new Date().toISOString(),
     k: key,
-    st: result.status,
+    st: result.st,
     ...resultFields(key, result),
-    in: valueOrNothing(result.bytesIn),
-    out: valueOrNothing(result.bytesOut),
-    err: result.error || undefined,
+    in: valueOrNothing(result.in),
+    out: valueOrNothing(result.out),
+    err: result.err || undefined,
     tries: result.attempts > 1 ? result.attempts : undefined,
     ms,
   };
 }
 
-const latestState = (status, error) => (error ? { status, error } : { status });
+const latestState = (status, error) => (error ? { st: status, err: error } : { st: status });
 
 // Append-only and written synchronously, so a crash loses only the images still in flight.
 export class ProgressStore {
@@ -68,16 +67,16 @@ export class ProgressStore {
 
   record(key, result, ms) {
     fs.writeSync(this.fd, `${JSON.stringify(progressEntry(key, result, ms))}\n`);
-    this.entries.set(key, latestState(result.status, result.error));
+    this.entries.set(key, latestState(result.st, result.err));
   }
 
   status(key) {
-    return this.entries.get(key)?.status;
+    return this.entries.get(key)?.st;
   }
 
   problems() {
     return [...this.entries]
-      .filter(([, entry]) => entry.status === 'failed' || entry.status === 'invalid')
-      .map(([key, entry]) => `${entry.status}\t${key}\t${entry.error ?? ''}`);
+      .filter(([, entry]) => entry.st === 'failed' || entry.st === 'invalid')
+      .map(([key, entry]) => `${entry.st}\t${key}\t${entry.err ?? ''}`);
   }
 }

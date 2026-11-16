@@ -56,5 +56,3 @@ export const shellQuote = (text) =>
   SHELL_SAFE.test(text) ? text : `'${String(text).replace(/'/g, `'\\''`)}'`;
 
 export const formatDateTime = (date) => date?.toISOString().slice(0, 16).replace('T', ' ') ?? '';
-
-export const joinParts = (parts, separator = ' · ') => parts.filter(Boolean).join(separator);

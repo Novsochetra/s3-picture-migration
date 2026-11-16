@@ -2,7 +2,6 @@ import { pipeline } from 'node:stream';
 import sharp from 'sharp';
 import { extensionOf } from '../../s3/keys.js';
 import { WEBP_MAX_DIMENSION } from '../settings/defaults.js';
-import { whileActive } from './active-transfers.js';
 import { byteCounter, LargerThanOriginalError } from './byte-counter.js';
 
 const UPLOAD_TUNING = { queueSize: 2, partSize: 8 * 1024 * 1024 };
@@ -12,24 +11,22 @@ function webpEncoder(buffer, { sourceKey, width, settings }) {
     width ?? settings.maxWidth ?? WEBP_MAX_DIMENSION,
     WEBP_MAX_DIMENSION,
   );
-  const resize = {
-    width: targetWidth,
-    // Only a ceiling: the height follows the aspect ratio.
-    height: WEBP_MAX_DIMENSION,
-    fit: 'inside',
-    withoutEnlargement: true,
-  };
 
   return (
     sharp(buffer, { animated: extensionOf(sourceKey) === 'gif' })
       // EXIF orientation first, so width and height are as people see the image.
       .rotate()
-      .resize(resize)
+      // The height is only a ceiling: it follows the aspect ratio.
+      .resize({
+        width: targetWidth,
+        height: WEBP_MAX_DIMENSION,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
       .webp({ quality: settings.quality, effort: 4 })
   );
 }
 
-// Remembers which stream failed first: the upload only reports that its body broke.
 function startEncodedUpload({ bucket, settings }, encoder, request) {
   const counter = byteCounter(request.limit ?? null);
   const failure = { origin: null };
@@ -51,11 +48,20 @@ function startEncodedUpload({ bucket, settings }, encoder, request) {
   return { upload, counter, failure };
 }
 
-async function finishUpload({ upload, counter, failure }) {
+export async function encodeUpload(context, request) {
+  const encoder = webpEncoder(request.buffer, { ...request, settings: context.settings });
+  const { upload, counter, failure } = startEncodedUpload(context, encoder, request);
+  const handle = {
+    abort: async () => {
+      encoder.destroy();
+      await upload.abort().catch(() => {});
+    },
+  };
+
+  context.state.active.add(handle);
+
   try {
     await upload.done();
-
-    return { bytesOut: counter.total() };
   } catch (error) {
     const cause = failure.origin?.error ?? error;
 
@@ -64,21 +70,12 @@ async function finishUpload({ upload, counter, failure }) {
     }
 
     // The source is complete in memory, so a sharp error means the file itself is bad.
-    if (failure.origin?.stage === 'encode') {
-      cause.permanent = true;
-    }
+    cause.permanent = failure.origin?.stage === 'encode' || cause.permanent;
 
     throw cause;
+  } finally {
+    context.state.active.delete(handle);
   }
-}
 
-export function encodeUpload(context, request) {
-  const encoder = webpEncoder(request.buffer, { ...request, settings: context.settings });
-  const transfer = startEncodedUpload(context, encoder, request);
-  const abort = async () => {
-    encoder.destroy();
-    await transfer.upload.abort().catch(() => {});
-  };
-
-  return whileActive(context.state, abort, () => finishUpload(transfer));
+  return { out: counter.total() };
 }

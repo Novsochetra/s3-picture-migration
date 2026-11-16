@@ -8,11 +8,11 @@ function updateCounts({ counts, stats }, { previous, result, size }) {
     counts[previous]--;
   }
 
-  if (PROBLEM_STATUSES.has(result.status)) {
-    counts[result.status]++;
+  if (PROBLEM_STATUSES.has(result.st)) {
+    counts[result.st]++;
   }
 
-  if (result.status !== 'failed') {
+  if (result.st !== 'failed') {
     counts.completed++;
     counts.completedBytes += size;
     stats.processedBytes += size;
@@ -21,7 +21,7 @@ function updateCounts({ counts, stats }, { previous, result, size }) {
 
 // Many failures in a row mean the network or the key is broken, not the images.
 function trackFailures({ log, limits, resumeCommand }, { state }, result) {
-  if (result.status !== 'failed') {
+  if (result.st !== 'failed') {
     state.consecutiveFailures = 0;
 
     return;

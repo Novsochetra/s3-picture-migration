@@ -20,19 +20,8 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 ## Coding
 
 - Simplest solution that works. Small files and functions with one job each. Lint enforces size and
-  complexity limits (150 lines a file, 40 lines a function, 12 statements a function, complexity 10,
-  depth 3, 4 parameters); split code instead of raising limits.
-- Passing lint is not the same as reading well: the limits measure size, not how many jobs a
-  function does. A function does one job when it changes for one reason only.
-- A function either works something out or does I/O (S3, files, the console), not both. Text the
-  user sees is built by a pure, tested function (`listingSummary(totals)`, `describeJobStatus`) and
-  printed by its caller; a loop does not count and print at once.
-- A command, a `main.js` or any function that runs steps reads like a table of contents: each line
-  calls one named step at the same level, with no inline formatting, global handlers or loops with
-  logic in them (see `lsCommand`, `runConvert`, `replaceWithBackup`).
-- Names say what a value is, in full, in memory: `result.status`, `bytesIn`, `sizeBytes`. Short
-  names belong only to formats on disk (`progress.jsonl`'s `st`, `in`, `vout`), mapped in one
-  place (`progressEntry`).
+  complexity limits (150 lines a file, 40 lines a function, complexity 10, depth 3, 4 parameters);
+  split code instead of raising limits.
 - Put code where it belongs (see "Layout" below and `docs/architecture.md`). No god objects, god
   functions or god files.
 - No comments that say what code does. Only write a comment to explain **why** something non-obvious
@@ -87,12 +76,8 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
   ```
 
 - A function with more than a few inputs takes one object (`{ bucket, prefix, manifestPath }`).
-  Tools return an exit code instead of calling `process.exit`; only `bin/`, the prompter and the
-  Ctrl+C handler exit (`no-restricted-properties` in `eslint.config.js`).
-- Run code on a condition with `if`, never `a && doSomething()` (`no-unused-expressions`, and
-  `no-restricted-syntax` for callbacks).
-- A function returning `null` (or `undefined`) for a meaning other than "nothing" says so in its
-  name or a short comment: `finalOutcome` returns null when the error is worth another attempt.
+  Tools return an exit code instead of calling `process.exit`; only `bin/` and interactive prompts
+  exit.
 
 ## Testing
 
@@ -107,19 +92,7 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 - Tests never reach AWS: they pass `connect` to `runConvert` / `runCreateFolder` and get a
   `createMemoryBucket()`, which keeps S3's conditional-write rules (`IfMatch`,
   `CopySourceIfMatch`).
-- Every file in `src/` is exercised by a test; a new file comes with its tests.
 - Verify your work: run `npm run check`.
-
-## Before a commit
-
-`npm run check` passing is the first step, not the last. Then review the diff for what no rule
-catches: run `/code-review`, or have a fresh agent read the diff without your reasoning, and answer
-for each new or changed function:
-
-1. How many reasons would it have to change? More than one: split it.
-2. Does it work something out and do I/O? Split the pure part out and test it. Does its name
-   say it does I/O (`uploadWebpAndSizes`, not `encodeImage`)?
-3. Can a reader tell what each line does without reading another file? If not, rename.
 
 ## Versions
 

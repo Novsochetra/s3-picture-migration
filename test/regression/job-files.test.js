@@ -31,13 +31,13 @@ describe('progress.jsonl', () => {
     const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'progress-')), 'progress.jsonl');
     const store = new ProgressStore(file);
     const result = {
-      status: 'done',
+      st: 'done',
       to: 'raw/cat.jpg',
       backup: 'raw/cat-original.jpg',
       sizes: [320],
-      sizeBytes: 900,
-      bytesIn: 5000,
-      bytesOut: 2000,
+      vout: 900,
+      in: 5000,
+      out: 2000,
       attempts: 2,
     };
 
@@ -76,7 +76,7 @@ describe('progress.jsonl', () => {
 
     await store.load();
     store.open();
-    store.record('raw/b.jpg', { status: 'done' }, 1);
+    store.record('raw/b.jpg', { st: 'done' }, 1);
     store.close();
 
     const reloaded = new ProgressStore(file);

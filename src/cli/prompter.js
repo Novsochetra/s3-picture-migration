@@ -38,16 +38,3 @@ export function createPrompter() {
 }
 
 export const saysYes = (answer) => /^y(es)?$/i.test(answer);
-
-// pick(answer) returns the choice, or undefined to ask again.
-export async function askUntilValid(prompt, question, pick) {
-  for (;;) {
-    const choice = pick(await prompt.ask(question));
-
-    if (choice !== undefined) {
-      return choice;
-    }
-
-    console.log('  Not a valid choice.');
-  }
-}

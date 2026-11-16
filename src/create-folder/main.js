@@ -26,15 +26,6 @@ function connectFolderBucket(args) {
 
 const newStats = () => ({ uploaded: 0, copied: 0, skipped: 0, deleted: 0, failed: 0, bytes: 0 });
 
-async function openFolder(args, connect) {
-  const folder = targetFolderOf(args);
-  const bucket = connect(args);
-  // One listing, reused by every step, which keeps it up to date.
-  const existing = await listSizes(bucket, folder);
-
-  return { args, bucket, folder, existing, stats: newStats() };
-}
-
 // connect is swapped out by the tests.
 export async function runCreateFolder(argv, { connect = connectFolderBucket } = {}) {
   const args = parseCreateFolderArgs(argv);
@@ -43,7 +34,10 @@ export async function runCreateFolder(argv, { connect = connectFolderBucket } = 
     return printUsage(USAGE_FILE);
   }
 
-  const context = await openFolder(args, connect);
+  const folder = targetFolderOf(args);
+  const bucket = connect(args);
+  const existing = await listSizes(bucket, folder);
+  const context = { args, bucket, folder, existing, stats: newStats() };
 
   if (args.empty && !(await emptyFolder(context))) {
     return 0;

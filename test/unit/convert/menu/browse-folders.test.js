@@ -18,7 +18,7 @@ describe('nextStep', () => {
 
   it('quits on q and ignores anything else', () => {
     expect(nextStep('q', here)).toEqual({ quit: true });
-    expect(nextStep('9', here)).toBeUndefined();
-    expect(nextStep('hello', here)).toBeUndefined();
+    expect(nextStep('9', here)).toEqual({});
+    expect(nextStep('hello', here)).toEqual({});
   });
 });

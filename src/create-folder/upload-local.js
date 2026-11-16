@@ -1,25 +1,37 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { formatBytes } from '../utils/format.js';
 import { runPool } from '../utils/pool.js';
 import { contentTypeOf } from './content-types.js';
+import { isAlreadyThere } from './list-sizes.js';
 import { localFiles } from './local-files.js';
-import { skipIfAlreadyThere, transferFile } from './transfer.js';
 
 const UPLOADS_IN_FLIGHT = 4;
 
 async function uploadOne(context, { abs, rel }) {
-  const key = context.folder + rel;
+  const { bucket, folder, existing, stats } = context;
+  const key = folder + rel;
   const size = fs.statSync(abs).size;
-  const params = { ContentType: contentTypeOf(rel) };
-  const send = () => context.bucket.upload({ key, body: fs.createReadStream(abs), params }).done();
 
-  if (skipIfAlreadyThere(context, key, rel, size)) {
+  if (isAlreadyThere(context, key, size)) {
+    stats.skipped++;
+    console.log(`skip      ${rel} (already there)`);
+
     return;
   }
 
-  const from = path.relative(process.cwd(), abs);
+  try {
+    const body = fs.createReadStream(abs);
 
-  await transferFile(context, { counter: 'uploaded', verb: 'uploaded', from, to: key, size, send });
+    await bucket.upload({ key, body, params: { ContentType: contentTypeOf(rel) } }).done();
+    existing.set(key, size);
+    stats.uploaded++;
+    stats.bytes += size;
+    console.log(`uploaded  ${path.relative(process.cwd(), abs)} -> ${key} (${formatBytes(size)})`);
+  } catch (error) {
+    stats.failed++;
+    console.error(`FAIL      ${abs}: ${error.name}: ${error.message}`);
+  }
 }
 
 export async function uploadLocal(context) {

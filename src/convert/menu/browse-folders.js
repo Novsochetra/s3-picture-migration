@@ -1,4 +1,3 @@
-import { askUntilValid } from '../../cli/prompter.js';
 import { normalizePrefix } from '../../s3/keys.js';
 
 const BROWSE_QUESTION =
@@ -30,7 +29,6 @@ const parentOf = (prefix) => {
   return parent ? `${parent}/` : '';
 };
 
-// Returns undefined for an answer that means nothing here.
 export function nextStep(answer, { prefix, folders }) {
   if (answer === '' || answer === '.') {
     return { use: prefix };
@@ -44,35 +42,38 @@ export function nextStep(answer, { prefix, folders }) {
     return { open: parentOf(prefix) };
   }
 
-  const picked = Number.isInteger(Number(answer)) ? folders[Number(answer) - 1] : undefined;
+  const picked = folders[Number(answer) - 1];
 
-  if (picked) {
+  if (Number.isInteger(Number(answer)) && picked) {
     return { open: picked };
   }
 
-  return answer.includes('/') ? { open: normalizePrefix(answer) } : undefined;
+  return answer.includes('/') ? { open: normalizePrefix(answer) } : {};
 }
 
-async function askInFolder(bucket, prompt, prefix) {
-  const listing = await bucket.listOnce({ prefix, delimiter: '/' });
-  const folders = (listing.CommonPrefixes ?? []).map((entry) => entry.Prefix);
-
-  showFolder({ bucketName: bucket.name, prefix, listing, folders });
-
-  return askUntilValid(prompt, BROWSE_QUESTION, (answer) => nextStep(answer, { prefix, folders }));
-}
-
-// The chosen folder, or null when the user quits.
 export async function browseFolders(bucket, prompt) {
   let prefix = '';
 
   for (;;) {
-    const step = await askInFolder(bucket, prompt, prefix);
+    const listing = await bucket.listOnce({ prefix, delimiter: '/' });
+    const folders = (listing.CommonPrefixes ?? []).map((entry) => entry.Prefix);
 
-    if (step.open === undefined) {
-      return step.quit ? null : step.use;
+    showFolder({ bucketName: bucket.name, prefix, listing, folders });
+
+    const step = nextStep(await prompt.ask(BROWSE_QUESTION), { prefix, folders });
+
+    if (step.quit) {
+      process.exit(0);
     }
 
-    prefix = step.open;
+    if (step.use !== undefined) {
+      return step.use;
+    }
+
+    prefix = step.open ?? prefix;
+
+    if (step.open === undefined) {
+      console.log('  Not a valid choice.');
+    }
   }
 }

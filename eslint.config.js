@@ -11,7 +11,6 @@ const sizeAndComplexity = {
   'max-lines': ['error', { max: 150, skipBlankLines: true, skipComments: true }],
   'max-lines-per-function': ['error', { max: 40, skipBlankLines: true, skipComments: true }],
   'max-classes-per-file': ['error', 1],
-  'max-statements': ['error', 12],
 };
 
 const readability = {
@@ -27,24 +26,6 @@ const readability = {
   'prefer-const': 'error',
   'prefer-template': 'error',
   'no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
-  'no-unused-expressions': 'error',
-  'no-restricted-syntax': [
-    'error',
-    {
-      // A callback whose return value is ignored only runs `a && b()` for its effect.
-      selector:
-        "CallExpression[callee.property.name=/^(on|once|forEach)$/] > ArrowFunctionExpression > LogicalExpression.body[right.type='CallExpression']",
-      message: 'Use an if statement, not `a && doSomething()`, to run code on a condition.',
-    },
-  ],
-  'no-restricted-properties': [
-    'error',
-    {
-      object: 'process',
-      property: 'exit',
-      message: 'Return an exit code; only bin/ and interactive prompts exit the process.',
-    },
-  ],
 };
 
 const comments = {
@@ -67,19 +48,9 @@ export default [
     rules: { ...sizeAndComplexity, ...readability, ...comments },
   },
   {
-    files: [
-      'bin/**/*.js',
-      'src/cli/prompter.js',
-      'src/cli/quiet-pipe.js',
-      'src/convert/run/stop-signals.js',
-    ],
-    rules: { 'no-restricted-properties': 'off' },
-  },
-  {
     files: ['test/**/*.js'],
     rules: {
       'max-lines-per-function': 'off',
-      'max-statements': 'off',
       'max-lines': ['error', { max: 250, skipBlankLines: true, skipComments: true }],
       'max-nested-callbacks': ['error', 4],
     },

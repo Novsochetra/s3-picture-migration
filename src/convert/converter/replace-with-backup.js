@@ -1,8 +1,7 @@
 import { backupKeyFor } from '../naming.js';
-import { converted, keptOriginal, SOURCE_GONE } from './results.js';
-import { uploadWebpAndSizes } from './upload-webp.js';
+import { encodeUpload } from './encode-upload.js';
 import { fetchBuffer } from './fetch-buffer.js';
-import { addMissingSizes } from './sizes.js';
+import { addMissingSizes, makeAllSizes } from './sizes.js';
 
 // A server-side copy of exactly the version that was looked at.
 async function ensureBackup({ bucket }, { key, current, backupKey }) {
@@ -34,40 +33,31 @@ function originalParams({ conditionalWrites }, current, backupKey) {
   };
 }
 
-// The backup is the only copy of the original once the WebP is written over it, so it is
-// dropped only while the original still sits untouched at its key.
-async function dropBackupIfOriginalUntouched({ bucket }, { key, current, backupKey }) {
-  // A failed look must not hide the real error; without an answer the backup stays.
-  const now = await bucket.head(key).catch(() => null);
-
-  if (now?.ETag === current.ETag) {
-    await bucket.remove(backupKey).catch(() => {});
-  }
-}
-
-async function uploadOverOriginal(context, target) {
-  const { key, current, backupKey, createdBackup } = target;
+async function encodeOverOriginal(context, { key, current, backupKey, createdBackup }) {
   const { buffer } = await fetchBuffer(context, backupKey);
-  const params = originalParams(context, current, backupKey);
 
   try {
-    return await uploadWebpAndSizes(context, {
+    const main = await encodeUpload(context, {
       buffer,
       sourceKey: backupKey,
-      mainKey: key,
-      params,
+      targetKey: key,
+      limit: context.settings.allowLarger ? null : buffer.length,
+      params: originalParams(context, current, backupKey),
     });
+
+    return { buffer, main };
   } catch (error) {
-    // After a network error the backup is kept for the retry.
+    // The original was never touched, so the extra copy goes; after a network error it is
+    // kept for the retry.
     if (error.permanent && createdBackup) {
-      await dropBackupIfOriginalUntouched(context, target);
+      await context.bucket.remove(backupKey).catch(() => {});
     }
 
     throw error;
   }
 }
 
-async function addSizesToConverted(context, { key, current, backupKey }) {
+async function sizesOfConverted(context, { key, current, backupKey }) {
   const added = await addMissingSizes(context, {
     mainKey: key,
     preferredSource: backupKey,
@@ -76,21 +66,7 @@ async function addSizesToConverted(context, { key, current, backupKey }) {
     reason: 'main image already webp',
   });
 
-  return added ?? { status: 'skipped', reason: 'already webp' };
-}
-
-// A WebP that would be larger was never written, so the original is untouched and its new
-// backup not needed.
-async function resultOf(context, { key, backupKey, createdBackup, uploaded }) {
-  if (!uploaded.larger) {
-    return converted(uploaded, { to: key, backup: backupKey });
-  }
-
-  if (createdBackup) {
-    await context.bucket.remove(backupKey);
-  }
-
-  return keptOriginal(uploaded);
+  return added ?? { st: 'skipped', reason: 'already webp' };
 }
 
 // Every step is safe to repeat, so a crash anywhere resumes on the next run.
@@ -99,16 +75,38 @@ export async function replaceWithBackup(context, { key }) {
   const current = await context.bucket.head(key);
 
   if (!current) {
-    return SOURCE_GONE;
+    return { st: 'skipped', reason: 'source no longer exists' };
   }
 
   if (current.ContentType === 'image/webp') {
-    return addSizesToConverted(context, { key, current, backupKey });
+    return sizesOfConverted(context, { key, current, backupKey });
   }
 
   const createdBackup = await ensureBackup(context, { key, current, backupKey });
   const target = { key, current, backupKey, createdBackup };
-  const uploaded = await uploadOverOriginal(context, target);
+  const { buffer, main } = await encodeOverOriginal(context, target);
+  const cacheControl = current.CacheControl;
+  const vout = await makeAllSizes(context, {
+    buffer,
+    sourceKey: backupKey,
+    mainKey: key,
+    cacheControl,
+  });
+  const sizes = context.settings.sizes ?? [];
 
-  return resultOf(context, { ...target, uploaded });
+  if (main.larger) {
+    if (createdBackup) {
+      await context.bucket.remove(backupKey);
+    }
+
+    return {
+      st: 'skipped',
+      reason: 'webp would be larger; original kept',
+      in: buffer.length,
+      sizes,
+      vout,
+    };
+  }
+
+  return { st: 'done', to: key, backup: backupKey, in: buffer.length, out: main.out, sizes, vout };
 }

@@ -3,86 +3,75 @@ import {
   formatCounts,
   formatDuration,
   formatNumber,
-  joinParts,
   percent,
   signedPercent,
 } from '../../utils/format.js';
 
-const bytesLeft = (counts) => counts.totalBytes - counts.completedBytes;
+const left = (counts) => counts.total - counts.completed;
 
 function invalidNote(invalid, retryFailed) {
   if (!invalid) {
-    return null;
+    return '';
   }
 
-  const action = retryFailed ? '(retrying)' : '(skipped; --retry-failed to retry)';
+  const action = retryFailed ? ' (retrying)' : ' (skipped; --retry-failed to retry)';
 
-  return `${formatNumber(invalid)} invalid ${action}`;
+  return ` · ${formatNumber(invalid)} invalid${action}`;
 }
 
 export function describeJobStatus(counts, retryFailed) {
-  const { completed, total, failed } = counts;
-  const parts = [
-    `${formatNumber(completed)} of ${formatNumber(total)} finished (${percent(completed, total)}%)`,
-    `${formatNumber(total - completed)} to go (${formatBytes(bytesLeft(counts))})`,
-    failed ? `${formatNumber(failed)} failed earlier (will retry)` : null,
-    invalidNote(counts.invalid, retryFailed),
-  ];
+  const failed = counts.failed
+    ? ` · ${formatNumber(counts.failed)} failed earlier (will retry)`
+    : '';
+  const bytesLeft = formatBytes(counts.totalBytes - counts.completedBytes);
 
-  return `Status:   ${joinParts(parts)}`;
+  return (
+    `Status:   ${formatNumber(counts.completed)} of ${formatNumber(counts.total)} finished ` +
+    `(${percent(counts.completed, counts.total)}%) · ${formatNumber(left(counts))} to go ` +
+    `(${bytesLeft})${failed}${invalidNote(counts.invalid, retryFailed)}`
+  );
 }
 
 export function describeScan(scan) {
-  const extensions = formatCounts(scan.byExt) || 'none';
-  const found = `Scan: ${formatNumber(scan.count)} images, ${formatBytes(scan.bytes)} (${extensions})`;
+  const found =
+    `Scan: ${formatNumber(scan.count)} images, ${formatBytes(scan.bytes)} ` +
+    `(${formatCounts(scan.byExt) || 'none'})`;
   const ignored = Object.values(scan.ignored).reduce((sum, count) => sum + count, 0);
-  const ignoredLine = `        ${formatNumber(ignored)} other files ignored (${formatCounts(scan.ignored)})`;
 
-  return ignored ? [found, ignoredLine] : [found];
+  return ignored
+    ? [
+        found,
+        `        ${formatNumber(ignored)} other files ignored (${formatCounts(scan.ignored)})`,
+      ]
+    : [found];
 }
-
-const runOutcomes = (stats) =>
-  `${formatNumber(stats.ok + stats.sized)} ok, ${formatNumber(stats.skipped)} skipped, ` +
-  `${formatNumber(stats.failed)} failed, ${formatNumber(stats.invalid)} invalid`;
 
 export function statusLine({ counts, stats }) {
-  const { completed, total } = counts;
   const elapsed = (Date.now() - stats.started) / 1000;
   const rate = stats.processedBytes / Math.max(elapsed, 1);
-  const parts = [
-    `${formatNumber(completed)}/${formatNumber(total)} (${percent(completed, total)}%)`,
-    `${formatBytes(counts.completedBytes)} of ${formatBytes(counts.totalBytes)}`,
-    `${formatBytes(rate)}/s`,
-    `ETA ${rate > 0 ? formatDuration(bytesLeft(counts) / rate) : '?'}`,
-    `this run: ${runOutcomes(stats)}`,
-    `elapsed ${formatDuration(elapsed)}`,
-  ];
+  const eta = rate > 0 ? formatDuration((counts.totalBytes - counts.completedBytes) / rate) : '?';
 
-  return `── ${joinParts(parts)}`;
-}
-
-function savings({ bytesIn, bytesOut }) {
-  if (!bytesIn) {
-    return null;
-  }
-
-  const saved = Math.round((1 - bytesOut / bytesIn) * 100);
-
-  return `${formatBytes(bytesIn)} -> ${formatBytes(bytesOut)} (${signedPercent(saved)})`;
+  return (
+    `── ${formatNumber(counts.completed)}/${formatNumber(counts.total)} ` +
+    `(${percent(counts.completed, counts.total)}%) · ` +
+    `${formatBytes(counts.completedBytes)} of ${formatBytes(counts.totalBytes)} · ` +
+    `${formatBytes(rate)}/s · ETA ${eta} · this run: ${formatNumber(stats.ok + stats.sized)} ok, ` +
+    `${formatNumber(stats.skipped)} skipped, ${formatNumber(stats.failed)} failed, ` +
+    `${formatNumber(stats.invalid)} invalid · elapsed ${formatDuration(elapsed)}`
+  );
 }
 
 export function runSummary(stats) {
-  const outcomes = joinParts(
-    [
-      `${formatNumber(stats.ok)} converted`,
-      stats.sized ? `${formatNumber(stats.sized)} got new sizes only` : null,
-      `${formatNumber(stats.skipped)} skipped`,
-      `${formatNumber(stats.failed)} failed`,
-      `${formatNumber(stats.invalid)} invalid`,
-    ],
-    ', ',
-  );
-  const sizeCopies = stats.sizeBytes ? `size copies ${formatBytes(stats.sizeBytes)}` : null;
+  const savedPercent = stats.bytesIn ? Math.round((1 - stats.bytesOut / stats.bytesIn) * 100) : 0;
+  const sized = stats.sized ? `, ${formatNumber(stats.sized)} got new sizes only` : '';
+  const bytes = stats.bytesIn
+    ? ` · ${formatBytes(stats.bytesIn)} -> ${formatBytes(stats.bytesOut)} (${signedPercent(savedPercent)})`
+    : '';
+  const sizeCopies = stats.sizeBytes ? ` · size copies ${formatBytes(stats.sizeBytes)}` : '';
 
-  return `\nRun finished: ${joinParts([outcomes, savings(stats), sizeCopies])}`;
+  return (
+    `\nRun finished: ${formatNumber(stats.ok)} converted${sized}, ` +
+    `${formatNumber(stats.skipped)} skipped, ${formatNumber(stats.failed)} failed, ` +
+    `${formatNumber(stats.invalid)} invalid${bytes}${sizeCopies}`
+  );
 }
