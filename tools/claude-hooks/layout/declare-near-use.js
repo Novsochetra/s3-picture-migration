@@ -38,7 +38,6 @@ function isHandle(sourceCode, statement) {
   return later.length > 0 && later.every((reference) => onlyReleases(reference.identifier));
 }
 
-// For each statement, the indexes of the statements that use what it declares.
 function usersOf(sourceCode, statements) {
   const indexOf = (position) =>
     statements.findIndex(

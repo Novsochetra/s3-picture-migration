@@ -31,7 +31,6 @@ function rulesFor(file) {
   };
 }
 
-// file is relative to the repo root; returns [{ line, message }].
 export function layoutProblems(code, file) {
   const config = {
     files: ['**/*.js'],
