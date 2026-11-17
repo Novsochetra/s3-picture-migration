@@ -14,11 +14,10 @@ export async function tallyJob({ manifestPath, progress, retryFailed }) {
   const counts = emptyCounts();
 
   for await (const { k: key, s: size } of readJsonLines(manifestPath)) {
-    const status = progress.status(key);
-
     counts.total++;
     counts.totalBytes += size;
 
+    const status = progress.status(key);
     if (isFinished(status, retryFailed)) {
       counts.completed++;
       counts.completedBytes += size;

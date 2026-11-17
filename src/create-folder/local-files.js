@@ -3,12 +3,11 @@ import path from 'node:path';
 
 function walk(root, dir, files) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = path.join(dir, entry.name);
-
     if (entry.name.startsWith('.')) {
       continue;
     }
 
+    const fullPath = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       walk(root, fullPath, files);
     } else if (entry.isFile()) {

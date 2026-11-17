@@ -48,13 +48,14 @@ async function work(session, run, { source, convert }) {
   for await (const item of source) {
     const started = Date.now();
     const result = await convert(item);
+    const ms = Date.now() - started;
 
     // Not recorded, so the image is redone on resume.
     if (result.st === 'aborted' || run.state.hardStop) {
       return;
     }
 
-    recordResult(session, run, { item, result, ms: Date.now() - started });
+    recordResult(session, run, { item, result, ms });
   }
 }
 

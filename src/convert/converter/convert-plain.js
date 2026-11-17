@@ -81,8 +81,8 @@ async function convertFresh(context, { key, mainKey }) {
 
   const cacheControl = response.CacheControl;
   const vout = await makeAllSizes(context, { buffer, sourceKey: key, mainKey, cacheControl });
-  const sizes = context.settings.sizes ?? [];
 
+  const sizes = context.settings.sizes ?? [];
   if (main.larger) {
     return {
       st: 'skipped',

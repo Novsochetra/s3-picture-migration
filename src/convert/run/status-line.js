@@ -63,10 +63,11 @@ export function statusLine({ counts, stats }) {
 
 export function runSummary(stats) {
   const savedPercent = stats.bytesIn ? Math.round((1 - stats.bytesOut / stats.bytesIn) * 100) : 0;
-  const sized = stats.sized ? `, ${formatNumber(stats.sized)} got new sizes only` : '';
   const bytes = stats.bytesIn
     ? ` · ${formatBytes(stats.bytesIn)} -> ${formatBytes(stats.bytesOut)} (${signedPercent(savedPercent)})`
     : '';
+
+  const sized = stats.sized ? `, ${formatNumber(stats.sized)} got new sizes only` : '';
   const sizeCopies = stats.sizeBytes ? ` · size copies ${formatBytes(stats.sizeBytes)}` : '';
 
   return (

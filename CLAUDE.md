@@ -12,10 +12,20 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 | `npm run create-folder -- …` | the test-folder tool (`bin/create-folder.js`) with the keys in `.env` |
 | `npm run check`              | lint, format and every test; run it before done                       |
 | `npm run lint`               | ESLint                                                                |
+| `npm run check:layout`       | the "Function layout" checks over all of `src/` and `bin/`            |
 | `npm run format`             | Prettier, writes files                                                |
 | `npm test`                   | all Vitest projects: `unit`, `integration`, `regression`              |
 
 `npm install` points git at `.githooks/`, whose pre-commit runs `npm run check`.
+
+Claude Code hooks (`.claude/settings.json`, `tools/claude-hooks/`) check the work as it is done,
+since a rule read once at the start is easy to forget:
+
+- after each edit, Claude is shown the comments it added (see "Coding") and the "Function layout"
+  problems in the edited file, and fixes them before going on,
+- before Claude finishes, `npm run check` runs whenever files changed, and Claude goes back to fix
+  what fails,
+- a commit or push with `--no-verify` / `-n` is refused, so the pre-commit check always runs.
 
 ## Coding
 
@@ -86,6 +96,19 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 - Process-wide setup (signal/stream handlers, exit handling) belongs in the CLI entry file, not in
   command functions.
 - No comments that describe what code does; only comments explaining a non-obvious _why_.
+
+The edit hook checks the first three after each edit (`tools/claude-hooks/layout/`), and
+`npm run check:layout` checks the whole repo:
+
+- a declaration that has nothing to do with the rest of its block (it neither uses nor is used by
+  its neighbours), in a block whose other lines work together or two blocks or more before its
+  first use; unpacking the inputs (`const { args } = context;`) and a handle kept only to be
+  released at the end (`clearInterval(ticker)`, `signals.remove()`) are fine where they are,
+- a missing blank line before the final `return` or after a block that closes with `}`,
+- `process.on`, `process.stdout.on` or `process.exit` outside `bin/`; the prompter, the folder
+  menu's `q` and a run's Ctrl+C handler are the exceptions (`PROCESS_SETUP_ALLOWED`).
+
+Whether each block does one thing is for you to judge.
 
 Reordering and grouping alone, with nothing else changed, makes a function read as its steps:
 

@@ -71,13 +71,13 @@ async function sizesOfConverted(context, { key, current, backupKey }) {
 
 // Every step is safe to repeat, so a crash anywhere resumes on the next run.
 export async function replaceWithBackup(context, { key }) {
-  const backupKey = backupKeyFor(key, context.settings.backupSuffix);
   const current = await context.bucket.head(key);
 
   if (!current) {
     return { st: 'skipped', reason: 'source no longer exists' };
   }
 
+  const backupKey = backupKeyFor(key, context.settings.backupSuffix);
   if (current.ContentType === 'image/webp') {
     return sizesOfConverted(context, { key, current, backupKey });
   }
@@ -94,8 +94,8 @@ export async function replaceWithBackup(context, { key }) {
     mainKey: key,
     cacheControl,
   });
-  const sizes = context.settings.sizes ?? [];
 
+  const sizes = context.settings.sizes ?? [];
   if (main.larger) {
     if (createdBackup) {
       await context.bucket.remove(backupKey);

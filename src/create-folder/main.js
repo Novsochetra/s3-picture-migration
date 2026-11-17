@@ -19,6 +19,7 @@ function connectFolderBucket(args) {
     pathStyle: args['path-style'],
   };
   const region = fallbackRegion(connection);
+
   const extra = { followRegionRedirects: true };
 
   return createBucket(createS3Client({ region, connection, extra }), args.bucket);

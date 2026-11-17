@@ -41,9 +41,6 @@ export async function lsCommand(context) {
   const knownRegion = args.region ?? target.region;
   const { bucket } = await connect(target.name, { connection, knownRegion, log });
 
-  // Piped into `head`, the pipe closes early: stop quietly.
-  process.stdout.on('error', (error) => error.code === 'EPIPE' && process.exit(0));
-
   const prefix = normalizePrefix(args.prefix);
   const delimiter = args.recursive ? null : '/';
   const totals = { files: 0, bytes: 0, folders: 0 };

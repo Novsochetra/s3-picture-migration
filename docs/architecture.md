@@ -36,7 +36,9 @@ test/
   support/              memory-bucket.js (the facade over a Map), images.js, capture-log.js
 tools/
   eslint-rules/         no-jsdoc-blocks, no-banner-comments
-  claude-hooks/         shows Claude every comment it adds
+  claude-hooks/         shows Claude every comment it adds and the function-layout problems of
+                        each file it edits (layout/), runs `npm run check` before Claude
+                        finishes, and refuses commits that skip the pre-commit check
 defaults-image-files/   a sample original to upload with create-folder --upload
 ```
 

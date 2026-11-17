@@ -58,10 +58,9 @@ export function resultLine(progressText, outcome) {
 }
 
 export function countResult(stats, result) {
-  const isDone = result.st === 'done';
-
   stats.sizeBytes += result.vout ?? 0;
 
+  const isDone = result.st === 'done';
   if (isDone && result.onlySizes) {
     stats.sized++;
   } else if (isDone) {

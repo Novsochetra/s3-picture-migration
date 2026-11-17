@@ -86,8 +86,8 @@ const isMadeCopy = (key, suffix) =>
 export async function planRollback({ bucket, prefix, suffix }) {
   const objects = await listObjects(bucket, prefix);
   const keys = [...objects.keys()];
-  const plan = { restore: [], unusedBackups: [], copies: [], leave: [] };
 
+  const plan = { restore: [], unusedBackups: [], copies: [], leave: [] };
   const backups = keys.filter((key) => isBackupKey(key, suffix));
   await runPool(backups, LOOKUPS_IN_FLIGHT, async (backupKey) => {
     addToPlan(plan, await classifyBackup(bucket, { backupKey, suffix, objects }));

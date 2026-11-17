@@ -19,7 +19,8 @@
     "test:integration": "vitest run --project integration",
     "test:regression": "vitest run --project regression",
     "check": "npm run lint && npm run format:check && npm test",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "check:layout": "node tools/claude-hooks/scan-layout.js"
   },
   "engines": {
     "node": ">=20.11"

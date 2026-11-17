@@ -6,6 +6,7 @@ import { readJson } from '../../utils/json-files.js';
 export function jobDirFor({ jobsDir, endpoint, bucketName, prefix }) {
   const id = `${endpoint ?? 'aws'}|${bucketName}|${prefix}`;
   const hash = crypto.createHash('sha1').update(id).digest('hex').slice(0, 8);
+
   const slug = `${bucketName}__${prefix || 'ROOT'}`.replace(/[^a-zA-Z0-9._-]+/g, '_').slice(0, 80);
 
   return path.resolve(jobsDir, `${slug}__${hash}`);
