@@ -1,6 +1,6 @@
 {
   "name": "s3-to-webp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Stream images from S3, convert to WebP, upload back to the same path",
   "private": true,
   "type": "module",
@@ -11,6 +11,8 @@
   "scripts": {
     "convert": "node --env-file=.env bin/s3-to-webp.js",
     "create-folder": "node --env-file=.env bin/create-folder.js",
+    "convert:prod": "node --env-file=.env.prod bin/s3-to-webp.js",
+    "create-folder:prod": "node --env-file=.env.prod bin/create-folder.js",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

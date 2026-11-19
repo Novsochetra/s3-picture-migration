@@ -10,6 +10,8 @@ with originals to try it on. Read `docs/architecture.md` before changing structu
 | ---------------------------- | --------------------------------------------------------------------- |
 | `npm run convert -- …`       | the converter (`bin/s3-to-webp.js`) with the keys in `.env`           |
 | `npm run create-folder -- …` | the test-folder tool (`bin/create-folder.js`) with the keys in `.env` |
+| `npm run convert:prod -- …`  | the converter with the keys in `.env.prod`; it says it is production  |
+| `npm run create-folder:prod` | the test-folder tool with the keys in `.env.prod`; same notice        |
 | `npm run check`              | lint, format and every test; run it before done                       |
 | `npm run lint`               | ESLint                                                                |
 | `npm run check:layout`       | the "Function layout" checks over all of `src/` and `bin/`            |

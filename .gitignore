@@ -2,3 +2,5 @@ node_modules/
 coverage/
 .env
 s3-webp-jobs/
+.env.prod
+.env.production

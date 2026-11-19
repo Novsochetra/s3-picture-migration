@@ -73,4 +73,16 @@ describe('create-folder', () => {
     ).rejects.toThrow(/--empty only works inside/);
     expect(bucket.keys()).toEqual(['raw/partner/123/profile/keep.jpg']);
   });
+
+  it('says it is production when started with .env.prod, and only then', async () => {
+    const options = (execArgv) => ({ connect: () => createMemoryBucket(), execArgv });
+    const argv = ['--bucket', 'test-bucket'];
+
+    await runCreateFolder(argv, options(['--env-file=.env']));
+    expect(output.join('\n')).not.toMatch(/PRODUCTION/);
+
+    output.length = 0;
+    await runCreateFolder(argv, options(['--env-file=.env.prod']));
+    expect(output[0]).toMatch(/^INFO {2}PRODUCTION: keys from \.env\.prod/);
+  });
 });

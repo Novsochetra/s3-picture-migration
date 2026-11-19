@@ -1,3 +1,4 @@
+import { prodNoticeFor } from '../cli/env-file.js';
 import { printUsage } from '../cli/usage.js';
 import { createBucket } from '../s3/bucket.js';
 import { createS3Client, fallbackRegion } from '../s3/client.js';
@@ -27,12 +28,19 @@ function connectFolderBucket(args) {
 
 const newStats = () => ({ uploaded: 0, copied: 0, skipped: 0, deleted: 0, failed: 0, bytes: 0 });
 
-// connect is swapped out by the tests.
-export async function runCreateFolder(argv, { connect = connectFolderBucket } = {}) {
+// connect and execArgv are swapped out by the tests.
+export async function runCreateFolder(argv, options = {}) {
+  const { connect = connectFolderBucket, execArgv = process.execArgv } = options;
   const args = parseCreateFolderArgs(argv);
 
   if (args.help) {
     return printUsage(USAGE_FILE);
+  }
+
+  const prodNotice = prodNoticeFor(execArgv);
+
+  if (prodNotice) {
+    console.log(prodNotice);
   }
 
   const folder = targetFolderOf(args);

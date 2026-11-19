@@ -13,6 +13,10 @@ cp env.example .env
 Then fill in `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in `.env`. Each bucket's region is
 found on its own; S3-compatible services work with `--endpoint` (and `--path-style` for MinIO).
 
+For production, put the prod keys in `.env.prod` (`cp env.example .env.prod`) and run
+`npm run convert:prod -- …` or `npm run create-folder:prod -- …`. A run started with `.env.prod`
+opens with `INFO  PRODUCTION: keys from .env.prod, every change goes to prod.`
+
 ## Try it on a test folder
 
 ```bash

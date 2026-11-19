@@ -1,3 +1,4 @@
+import { prodNoticeFor } from '../cli/env-file.js';
 import { printUsage } from '../cli/usage.js';
 import { createLogger } from '../logging/logger.js';
 import { connectBucket } from '../s3/region.js';
@@ -11,12 +12,19 @@ import { openSession } from './run/open-session.js';
 
 const USAGE_FILE = new URL('./usage.txt', import.meta.url);
 
-// connect and log are swapped out by the tests.
-export async function runConvert(argv, { connect = connectBucket, log = createLogger() } = {}) {
+// connect, log and execArgv are swapped out by the tests.
+export async function runConvert(argv, options = {}) {
+  const { connect = connectBucket, log = createLogger(), execArgv = process.execArgv } = options;
   const args = parseConvertArgs(argv);
 
   if (args.help) {
     return printUsage(USAGE_FILE);
+  }
+
+  const prodNotice = prodNoticeFor(execArgv);
+
+  if (prodNotice) {
+    log.info(prodNotice);
   }
 
   const context = { args, connection: connectionOf(args), limits: runLimitsOf(args), log, connect };

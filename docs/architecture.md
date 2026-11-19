@@ -12,7 +12,8 @@ src/
   utils/                format.js (bytes, durations, counts), pool.js (runPool, chunk, sleep),
                         json-files.js (atomic JSON, JSON lines that survive a crash)
   logging/              logger.js: console + the job's run.log
-  cli/                  prompter.js (questions, piped or typed), integer-option.js, usage.js
+  cli/                  prompter.js (questions, piped or typed), integer-option.js, usage.js,
+                        env-file.js (the production notice for a run started with .env.prod)
   s3/                   bucket.js (the facade every request goes through), client.js, region.js
                         (finds a bucket's region from the two keys alone), buckets.js, errors.js,
                         keys.js (extension, stem, folder helpers)
